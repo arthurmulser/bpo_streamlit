@@ -3,6 +3,7 @@ import streamlit as st
 from bpo import bpo
 from fin import fin
 from menu import menu
+from sc import sc
 
 st.markdown(
     """
@@ -35,3 +36,5 @@ elif st.session_state.tela_atual == "B":
     bpo()
 elif st.session_state.tela_atual == "C":
     fin()
+elif st.session_state.tela_atual == "D":
+    sc()    

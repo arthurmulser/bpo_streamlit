@@ -11,6 +11,15 @@ def get_db_connection():
     )
     return conn
 
+def get_db_connection_sc():
+    conn_sc = pymysql.connect(
+        host='135.148.122.162',
+        user='vedvoyager_vedvoyager_bpo_views',
+        password='Jordeci1@',
+        database='vedvoyager_vedvoyager_prod'
+    )
+    return conn_sc
+
 def get_data_from_db(selected_empresa=None):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -55,3 +64,49 @@ def get_empresas():
     
     empresas = pd.DataFrame(rows, columns=['IdEmpresa', 'Empresa'])
     return empresas
+
+# utils.py
+def get_animais():
+    conn = get_db_connection_sc()
+    cursor = conn.cursor()
+    
+    query = """
+    SELECT 
+        idtb_animais,
+        nome,
+        sexo,
+        data_nascimento,
+        idtb_animais_mae,
+        nome_mae,
+        idtb_ativo
+    FROM view_animais
+    WHERE idtb_animais_mae > 0
+    ORDER BY data_nascimento DESC;
+    """
+    
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    animais = pd.DataFrame(rows, columns=[
+        'idtb_animais',
+        'nome',
+        'sexo',
+        'data_nascimento',
+        'idtb_animais_mae',
+        'nome_mae',
+        'idtb_ativo'
+    ])
+    
+    # Converter data_nascimento para datetime, tratando valores inválidos
+    if not animais.empty:
+        animais['data_nascimento'] = pd.to_datetime(
+            animais['data_nascimento'],
+            errors='coerce',  # Converte datas inválidas para NaT (Not a Time)
+            format='%Y-%m-%d'
+        )
+        # Remover linhas com datas inválidas (opcional)
+        animais = animais.dropna(subset=['data_nascimento'])
+    
+    return animais

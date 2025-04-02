@@ -11,3 +11,5 @@ def menu():
         st.session_state.tela_atual = "B"
     if st.button("GO TO FIN"):
         st.session_state.tela_atual = "C"
+    if st.button("GO TO SC"):
+        st.session_state.tela_atual = "D"    

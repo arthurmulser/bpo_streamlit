@@ -1,0 +1,68 @@
+import pandas as pd
+import plotly.express as px
+import streamlit as st
+from utils import get_animais
+
+def sc():
+    col1, col2 = st.columns([4, 1])  
+
+    st.markdown("## Linha do Tempo de Nascimentos na Propriedade")
+
+    with col1:
+        st.markdown(
+            """
+            <h1 class="title">
+                SC
+            </h1>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col2:
+        if st.button("<-"):
+            st.session_state.tela_atual = "A" 
+            
+    df = get_animais()
+    
+    # convertendo a coluna de datas para datetime
+    df["data_nascimento"] = pd.to_datetime(df["data_nascimento"])
+
+    # ordenando os dados pela data de nascimento
+    df = df.sort_values(by="data_nascimento").reset_index(drop=True)
+
+    # criando coluna de cores (rosa para Fêmeas, azul para Machos)
+    df["cor"] = df["sexo"].map({"F": "F", "M": "M"})
+
+    # criando deslocamento no eixo Y para evitar sobreposição
+    y_positions = []
+    last_date = None
+    offset = 0  # deslocamento inicial
+
+    for date in df["data_nascimento"]:
+        if last_date is not None and (date - last_date).days < 100000:
+            offset += 0.005  # eleva o ponto em 0.1 unidades
+        else:
+            offset = 0  # reseta o deslocamento se houver espaço suficiente
+        y_positions.append(1 + offset)
+        last_date = date
+
+    df["y_position"] = y_positions  # adiciona ao dataframe
+
+    # criando o gráfico de linha do tempo
+    fig = px.scatter(
+        df,
+        x="data_nascimento",  # eixo x = Data de nascimento
+        y="y_position",  # posição ajustada no eixo y
+        color="cor",  # define a cor dos pontos
+        hover_name="nome",  # exibe o nome apenas no hover
+        labels={"data_nascimento": "Data de Nascimento"},
+        title="Linha do Tempo de Nascimentos",
+    )
+
+    # melhorando layout do gráfico
+    fig.update_traces(marker=dict(size=10))  # define tamanho dos pontos
+    fig.update_yaxes(visible=False)  # esconder eixo y
+    fig.update_xaxes(title="Data de Nascimento")
+    
+    # exibir no streamlit
+    st.plotly_chart(fig, use_container_width=True)
