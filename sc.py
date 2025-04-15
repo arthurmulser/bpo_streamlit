@@ -6,7 +6,7 @@ from utils import get_animais
 def sc():
     col1, col2 = st.columns([4, 1])  
 
-    st.markdown("## Linha do Tempo de Nascimentos na Propriedade")
+    st.markdown("## Born")
 
     with col1:
         st.markdown(
@@ -40,7 +40,7 @@ def sc():
 
     for date in df["data_nascimento"]:
         if last_date is not None and (date - last_date).days < 100000:
-            offset += 0.005  # eleva o ponto em 0.1 unidades
+            offset += 1 
         else:
             offset = 0  # reseta o deslocamento se houver espaço suficiente
         y_positions.append(1 + offset)
@@ -61,7 +61,16 @@ def sc():
 
     # melhorando layout do gráfico
     fig.update_traces(marker=dict(size=10))  # define tamanho dos pontos
-    fig.update_yaxes(visible=False)  # esconder eixo y
+    fig.update_yaxes(
+        title="Quantidade de Nascimentos",
+        tickmode="linear",
+        dtick=1,  # 1 em 1 nascimento
+        ticks="outside",
+        showgrid=True  # pode ser True pra facilitar leitura
+    )
+
+
+
     fig.update_xaxes(title="Data de Nascimento")
     
     # exibir no streamlit
