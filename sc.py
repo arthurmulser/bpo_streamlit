@@ -1,7 +1,7 @@
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from utils import get_animais
+from utils import get_animais, get_total_leite_produzido
 
 def sc():
     col1, col2 = st.columns([4, 1])  
@@ -48,15 +48,39 @@ def sc():
 
     df["y_position"] = y_positions  # adiciona ao dataframe
 
+    df["total_leite"] = df.apply(lambda row: get_total_leite_produzido(
+        data_inicial='2024-12-13',
+        data_final='2025-04-30',
+        idtb_animais=row['idtb_animais_mae']  # Usando o ID da mãe
+    ), axis=1)
+
     # criando o gráfico de linha do tempo
     fig = px.scatter(
         df,
-        x="data_nascimento",  # eixo x = Data de nascimento
-        y="y_position",  # posição ajustada no eixo y
-        color="cor",  # define a cor dos pontos
-        hover_name="nome",  # exibe o nome apenas no hover
-        labels={"data_nascimento": "Data de Nascimento"},
+        x="data_nascimento",
+        y="y_position",
+        color="cor",
+        hover_name="nome",
+        hover_data={
+            "data_nascimento": "|%d/%m/%Y",  # Formatação da data
+            "total_leite": ":.2f",           # Total de leite com 2 casas decimais
+            "nome_mae": True,
+            "idtb_animais_mae": True,            
+            "y_position": True              
+        },
+        labels={
+            "data_nascimento": "Data de Nascimento",
+            "total_leite": "Produção Total de Leite (L)",
+            "idtb_animais_mae": "ID da Mãe",
+            "nome_mae": "Nome da Mãe"
+        },
         title="Linha do Tempo de Nascimentos",
+    )
+
+    fig.update_traces(
+        text="oi",  # Formata o valor
+        textposition="top center",                            # Posiciona acima do ponto
+        textfont=dict(size=10, color="black")                # Estilo do texto (opcional)
     )
 
     # melhorando layout do gráfico
