@@ -2,7 +2,7 @@
 import pandas as pd
 import pymysql
 
-def get_db_connection():
+def get_db_connection(): #20250608
     conn = pymysql.connect(
         host='135.148.122.162',
         user='vedvoyager_vedvoyager_bpo_views',
@@ -11,7 +11,7 @@ def get_db_connection():
     )
     return conn
 
-def get_db_connection_sc():
+def get_db_connection_sc(): #20250608
     conn_sc = pymysql.connect(
         host='135.148.122.162',
         user='vedvoyager_vedvoyager_bpo_views',
@@ -20,7 +20,7 @@ def get_db_connection_sc():
     )
     return conn_sc
 
-def get_data_from_db(selected_empresa=None):
+def get_realizados_por_empresa(selected_empresa=None): #20250608
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -48,13 +48,15 @@ def get_data_from_db(selected_empresa=None):
     
     return df
 
-def get_empresas():
+def get_empresas(): #20250608
     conn = get_db_connection()
     cursor = conn.cursor()
     
     query = """
-    SELECT DISTINCT IdEmpresa, Empresa 
-    FROM view_realizados
+    SELECT DISTINCT
+        IdEmpresa, Empresa
+    FROM
+        view_realizados
     GROUP BY IdEmpresa;
     """
     cursor.execute(query)
@@ -65,8 +67,7 @@ def get_empresas():
     empresas = pd.DataFrame(rows, columns=['IdEmpresa', 'Empresa'])
     return empresas
 
-# utils.py
-def get_animais():
+def get_animais(): #20250608
     conn = get_db_connection_sc()
     cursor = conn.cursor()
     
@@ -78,9 +79,12 @@ def get_animais():
         data_nascimento,
         idtb_animais_mae,
         nome_mae,
+        dt_desmame,
         idtb_ativo
-    FROM view_animais
-    WHERE idtb_animais_mae > 0
+    FROM
+        view_animais
+    WHERE
+        idtb_animais_mae > 0
     ORDER BY data_nascimento DESC;
     """
     
@@ -96,23 +100,21 @@ def get_animais():
         'data_nascimento',
         'idtb_animais_mae',
         'nome_mae',
+        'dt_desmame',
         'idtb_ativo'
     ])
     
-    # Converter data_nascimento para datetime, tratando valores inválidos
     if not animais.empty:
         animais['data_nascimento'] = pd.to_datetime(
             animais['data_nascimento'],
-            errors='coerce',  # Converte datas inválidas para NaT (Not a Time)
+            errors='coerce', 
             format='%Y-%m-%d'
         )
-        # Remover linhas com datas inválidas (opcional)
         animais = animais.dropna(subset=['data_nascimento'])
     
     return animais
 
-##
-def get_total_leite_produzido(data_inicial, data_final, idtb_animais):
+def get_total_leite_produzido(data_inicial, data_final, idtb_animais): #20250608 - vou substituir isso por um select que retorna a média de produção entre o nascimento e o desmame;
     query = f"""
     SELECT 
         SUM(valor_calculado) AS total_valor_calculado
@@ -174,3 +176,30 @@ def get_total_leite_produzido(data_inicial, data_final, idtb_animais):
     conn.close()
 
     return result or 0.0
+
+def get_media_leite_por_periodo(data_inicial, data_final, idtb_animais): #20250608
+    query = """
+    SELECT AVG(valor)
+    FROM view_eventos
+    WHERE idtb_eventos_tipos = 1
+      AND idtb_animais = %s
+      AND dt_evento BETWEEN %s AND %s
+    """
+    
+    try:
+        conn = get_db_connection_sc()
+        with conn.cursor() as cursor:
+            cursor.execute(query, (idtb_animais, data_inicial, data_final))
+            result = cursor.fetchone()[0]
+        return float(result) if result else 0.0
+    
+    except Exception as e:
+        print(f"erro ao calcular média: {e}")
+        return 0.0
+    
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+   

@@ -26,10 +26,8 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
 if "tela_atual" not in st.session_state:
     st.session_state.tela_atual = "A"
-
 if st.session_state.tela_atual == "A":
     menu()
 elif st.session_state.tela_atual == "B":

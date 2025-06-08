@@ -1,7 +1,8 @@
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from utils import get_animais, get_total_leite_produzido
+from datetime import datetime, timedelta
+from utils import get_animais, get_media_leite_por_periodo
 
 def sc():
     col1, col2 = st.columns([4, 1])  
@@ -17,85 +18,106 @@ def sc():
             """,
             unsafe_allow_html=True,
         )
-
     with col2:
         if st.button("<-"):
-            st.session_state.tela_atual = "A" 
-            
+            st.session_state.tela_atual = "A"    
+
     df = get_animais()
     
-    # convertendo a coluna de datas para datetime
-    df["data_nascimento"] = pd.to_datetime(df["data_nascimento"])
+    df["data_nascimento"] = pd.to_datetime(df["data_nascimento"]) # convertendo a coluna de datas para datetime;
 
-    # ordenando os dados pela data de nascimento
-    df = df.sort_values(by="data_nascimento").reset_index(drop=True)
+    df = df.sort_values(by="data_nascimento").reset_index(drop=True) # ordenando os dados pela data de nascimento;
 
-    # criando coluna de cores (rosa para Fêmeas, azul para Machos)
-    df["cor"] = df["sexo"].map({"F": "F", "M": "M"})
+    df["cor"] = df["sexo"].map({"F": "F", "M": "M"}) # criando coluna de cores (rosa para fêmeas, azul para machos);
 
-    # criando deslocamento no eixo Y para evitar sobreposição
-    y_positions = []
+    y_positions = [] # criando deslocamento no eixo y para evitar sobreposição;
     last_date = None
-    offset = 0  # deslocamento inicial
+    offset = 0  # deslocamento inicial;
 
     for date in df["data_nascimento"]:
         if last_date is not None and (date - last_date).days < 100000:
             offset += 1 
         else:
-            offset = 0  # reseta o deslocamento se houver espaço suficiente
+            offset = 0  # reseta o deslocamento se houver espaço suficiente;
         y_positions.append(1 + offset)
         last_date = date
 
-    df["y_position"] = y_positions  # adiciona ao dataframe
+    df["ey_pos"] = y_positions  # adiciona ao dataframe;
 
-    df["total_leite"] = df.apply(lambda row: get_total_leite_produzido(
-        data_inicial='2024-12-13',
-        data_final='2025-04-30',
-        idtb_animais=row['idtb_animais_mae']  # Usando o ID da mãe
+    def define_data_final_para_calculo_do_leite_total(row):
+        if pd.notna(row['dt_desmame']):
+            return row['dt_desmame']
+        else:
+            data_nascimento = row['data_nascimento']
+
+            data_atual = pd.to_datetime(datetime.now().date())  
+            
+            diferenca_meses = (data_atual - data_nascimento).days / 30
+            
+            if diferenca_meses > 16: # se não houver sido lançado a data de desmame;
+                return data_nascimento  
+            else:
+                return data_atual  
+
+    df['data_final_calc'] = df.apply(define_data_final_para_calculo_do_leite_total, axis=1)
+
+    df['dias_produzindo_leite'] = (df['data_final_calc'] - df['data_nascimento']).dt.days
+
+    df["media_leite_periodo"] = df.apply(lambda row: get_media_leite_por_periodo(
+        data_inicial=row['data_nascimento'],
+        data_final=row['data_final_calc'],
+        idtb_animais=row['idtb_animais_mae']
     ), axis=1)
 
-    # criando o gráfico de linha do tempo
-    fig = px.scatter(
+    df["total_leite"] = df["media_leite_periodo"] * df["dias_produzindo_leite"]
+
+    df['dt_desmame_formatada'] = df['dt_desmame'].apply(
+        lambda x: x.strftime("%d/%m/%Y") if pd.notna(x) else "não informado"
+    )
+
+    fig = px.scatter( # criando o gráfico de linha do tempo;
         df,
         x="data_nascimento",
-        y="y_position",
-        color="cor",
+        y="ey_pos",
+        color="sexo",
         hover_name="nome",
         hover_data={
-            "data_nascimento": "|%d/%m/%Y",  # Formatação da data
-            "total_leite": ":.2f",           # Total de leite com 2 casas decimais
+            "data_nascimento": "|%d/%m/%Y",  
+            "dt_desmame_formatada": True,
+            "dias_produzindo_leite": True,  
+            "media_leite_periodo": ":.2f",   
+            "total_leite": ":.2f",     
             "nome_mae": True,
             "idtb_animais_mae": True,            
-            "y_position": True              
+            "ey_pos": True              
         },
         labels={
-            "data_nascimento": "Data de Nascimento",
-            "total_leite": "Produção Total de Leite (L)",
-            "idtb_animais_mae": "ID da Mãe",
-            "nome_mae": "Nome da Mãe"
+            "data_nascimento": "dt_nas",
+            "dt_desmame_formatada": "dt_des",
+            "media_leite_periodo": "av_lit",
+            "dias_produzindo_leite": "di_ple",
+            "total_leite": "pd_tot",
+            "idtb_animais_mae": "id_mae",
+            "nome_mae": "no_mae"
         },
-        title="Linha do Tempo de Nascimentos",
+        title="linha do tempo de nascimentos",
     )
 
     fig.update_traces(
-        text="oi",  # Formata o valor
-        textposition="top center",                            # Posiciona acima do ponto
-        textfont=dict(size=10, color="black")                # Estilo do texto (opcional)
+        text="oi",  
+        textposition="top center",                            
+        textfont=dict(size=10, color="black")                
     )
 
-    # melhorando layout do gráfico
-    fig.update_traces(marker=dict(size=10))  # define tamanho dos pontos
+    fig.update_traces(marker=dict(size=10))  
     fig.update_yaxes(
-        title="Quantidade de Nascimentos",
+        title="quantidade de nascimentos",
         tickmode="linear",
-        dtick=1,  # 1 em 1 nascimento
+        dtick=1,  
         ticks="outside",
-        showgrid=True  # pode ser True pra facilitar leitura
+        showgrid=True  
     )
 
-
-
-    fig.update_xaxes(title="Data de Nascimento")
+    fig.update_xaxes(title="data de nascimento")
     
-    # exibir no streamlit
     st.plotly_chart(fig, use_container_width=True)
