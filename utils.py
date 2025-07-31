@@ -20,6 +20,15 @@ def get_db_connection_sc(): #20250608
     )
     return conn_sc
 
+def get_db_connection_teste(): 
+    conn_sc = pymysql.connect(
+        host='135.148.122.162',
+        user='vedvoyager_teste',
+        password='Jordeci1@',
+        database='vedvoyager_vedvoyager'
+    )
+    return conn_teste    
+
 def get_realizados_por_empresa(selected_empresa=None): #20250608
     conn = get_db_connection()
     cursor = conn.cursor()
