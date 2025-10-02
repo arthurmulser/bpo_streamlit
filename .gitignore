@@ -1,0 +1,6 @@
+_csv/
+__pycache__/
+
+.env
+
+debug.log

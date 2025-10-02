@@ -121,3 +121,4 @@ def sc():
     fig.update_xaxes(title="data de nascimento")
     
     st.plotly_chart(fig, use_container_width=True)
+    
