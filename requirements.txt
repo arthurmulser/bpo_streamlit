@@ -1,0 +1,9 @@
+streamlit
+pandas
+plotly
+pymysql
+matplotlib
+yfinance
+python-dotenv
+mysql-connector-python
+langchain-groq
