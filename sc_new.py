@@ -11,6 +11,9 @@ from utils import get_animais, get_db_connection_sc, get_media_leite_por_periodo
 CSV_DIR = Path("_csv")
 CSV_DIR.mkdir(exist_ok=True)
 
+COLOR_INACTIVE = '#B0B0B0'  # Cor para mães inativas no gráfico
+COLOR_ACTIVE = '#1f77b4'    # Cor para mães ativas no gráfico (azul padrão Plotly)
+
 def fetch_and_save_view_animais(path: Path):
     """busca `view_animais` do banco usando `get_animais()` e salva em csv;"""
     df = get_animais()
@@ -211,8 +214,131 @@ def sc_new():
     )
 
     fig.update_xaxes(title="data de nascimento")
+    ### ### ###
+    st.markdown("### Linha de tempo dos nascimentos")
+    st.plotly_chart(fig, use_container_width=True, key="timeline_chart")
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.markdown("### Produção Total de Leite por Mãe")
+
+    if df_eventos.empty: # verifique se o dataframe de eventos está carregado;
+        st.warning("Arquivo de eventos não carregado. O cálculo da produção de leite não pode ser realizado.")
+        df_prod_total = pd.DataFrame({'animal': [], 'producao': [], 'ativa': []})
+        production_per_month = {}
+    else:
+        df_eventos['dt_evento'] = pd.to_datetime(df_eventos['dt_evento'])
+        
+        total_production_per_mother = {}
+        production_per_month = {}
+        
+        df['idtb_animais_mae'] = pd.to_numeric(df['idtb_animais_mae'], errors='coerce')
+        df_eventos['idtb_animais'] = pd.to_numeric(df_eventos['idtb_animais'], errors='coerce')
+
+        unique_mother_ids = df['idtb_animais_mae'].dropna().unique()
+
+        for mother_id in unique_mother_ids:
+            mother_total_production = 0
+            calves_df = df[df['idtb_animais_mae'] == mother_id]
+            mother_name = calves_df['nome_mae'].iloc[0]
+
+            for _, calf in calves_df.iterrows():
+                lactation_start = pd.to_datetime(calf['data_nascimento'])
+                lactation_end = pd.to_datetime(calf['data_final_calc'])
+
+                if pd.isna(lactation_start) or pd.isna(lactation_end):
+                    continue
+
+                for month_start in pd.date_range(start=lactation_start.to_period('M').to_timestamp(), end=lactation_end, freq='MS'):
+                    month_end = month_start + pd.offsets.MonthEnd(0)
+                    effective_start = max(month_start, lactation_start)
+                    effective_end = min(month_end, lactation_end - pd.Timedelta(days=1))
+                    
+                    if effective_start > effective_end:
+                        continue
+
+                    month_events = df_eventos[
+                        (df_eventos['idtb_animais'] == mother_id) &
+                        (df_eventos['idtb_eventos_tipos'] == 1) &
+                        (df_eventos['dt_evento'] >= effective_start) &
+                        (df_eventos['dt_evento'] <= effective_end)
+                    ]
+                    
+                    monthly_production = 0
+                    if not month_events.empty:
+                        monthly_avg = month_events['valor'].mean()
+                        productive_days = (effective_end - effective_start).days + 1
+                        monthly_production = monthly_avg * productive_days
+                    
+                    mother_total_production += monthly_production
+                    
+                    if monthly_production > 0:
+                        month_key = month_start.strftime('%Y-%m')
+                        production_per_month[month_key] = production_per_month.get(month_key, 0) + monthly_production
+            
+            total_production_per_mother[mother_name] = mother_total_production
+
+        df_prod_total = pd.DataFrame(list(total_production_per_mother.items()), columns=['animal', 'producao']) # cria o dataframe de produção;
+        df_prod_total['producao'] = df_prod_total['producao'].round()
+
+        df_status = df[['nome', 'idtb_ativo']].copy() # cria um dataframe separado para o status de atividade;
+        df_status.rename(columns={'nome': 'animal'}, inplace=True)
+        df_status['idtb_ativo_raw'] = pd.to_numeric(df_status['idtb_ativo'], errors='coerce').fillna(0)
+        df_status['ativa'] = df_status['idtb_ativo_raw'].astype(int) == 1
+        df_status = df_status[['animal', 'ativa', 'idtb_ativo_raw']].drop_duplicates()
+
+        df_prod_total = pd.merge(df_prod_total, df_status, on='animal', how='left') # junta a informação de status no dataframe de produção;
+        df_prod_total['ativa'].fillna(False, inplace=True)
+        df_prod_total['idtb_ativo_raw'].fillna(0, inplace=True)
+
+        df_prod_total['status_cor'] = df_prod_total['ativa'].apply(lambda x: 'Ativa' if x else 'Inativa') # cria a coluna de cor e a nova label para o eixo x;
+        df_prod_total['animal_label'] = df_prod_total['animal'] + " (Ativo: " + df_prod_total['idtb_ativo_raw'].astype(int).astype(str) + ")"
+        df_prod_total = df_prod_total.sort_values('producao', ascending=False)
+
+    if not df_prod_total.empty: # gráfico 1: produção por mãe;
+        fig_prod_total = px.bar(
+            df_prod_total,
+            x='animal_label',
+            y='producao',
+            title='Produção Total de Leite por Mãe',
+            labels={'animal_label': 'Mãe (Status Ativo)', 'producao': 'Produção Total de Leite (Litros)', 'status_cor': 'Status'},
+            text='producao',
+            color='status_cor',
+            color_discrete_map={
+                'Ativa': COLOR_ACTIVE,
+                'Inativa': COLOR_INACTIVE
+            }
+        )
+        fig_prod_total.update_traces(texttemplate='%{text:.0f} L', textposition='outside')
+        fig_prod_total.update_layout(xaxis_tickangle=-45)
+        st.plotly_chart(fig_prod_total, use_container_width=True, key="prod_total_chart")
+    else:
+        st.write("Nenhum dado de produção de mãe encontrado para exibir o gráfico.")
+
+    st.markdown("### Produção de Leite por Mês") # gráfico 2: produção por mês;
+    if not production_per_month:
+        st.write("Nenhum dado de produção mensal encontrado para exibir o gráfico.")
+    else:
+        first_event_month = min(production_per_month.keys()) # garante que a faixa de meses vai do primeiro evento até o mês atual;
+        last_month = pd.Timestamp.now().strftime('%Y-%m')
+        all_months_range = pd.date_range(start=first_event_month, end=last_month, freq='MS').strftime('%Y-%m')
+        
+        full_monthly_data = {month: round(production_per_month.get(month, 0)) for month in all_months_range} # preenche os meses sem produção com 0;
+
+        df_monthly_prod = pd.DataFrame({
+            'mes': list(full_monthly_data.keys()),
+            'producao_mensal': list(full_monthly_data.values())
+        })
+
+        fig_monthly_prod = px.bar(
+            df_monthly_prod,
+            x='mes',
+            y='producao_mensal',
+            title='Produção Total de Leite por Mês (Todas as Vacas)',
+            labels={'mes': 'Mês', 'producao_mensal': 'Produção Total (Litros)'},
+            text='producao_mensal'
+        )
+        fig_monthly_prod.update_traces(texttemplate='%{text:.0f} L', textposition='outside')
+        fig_monthly_prod.update_layout(xaxis_tickangle=-45)
+        st.plotly_chart(fig_monthly_prod, use_container_width=True, key="monthly_prod_chart")
 
 if __name__ == "__main__": # para testes locais rápidos;
     sc_new()

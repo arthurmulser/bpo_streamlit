@@ -92,9 +92,7 @@ def get_animais(): #20250608
         idtb_ativo
     FROM
         view_animais
-    WHERE
-        idtb_animais_mae > 0
-    ORDER BY data_nascimento DESC;
+    ;
     """
     
     cursor.execute(query)
@@ -119,7 +117,6 @@ def get_animais(): #20250608
             errors='coerce', 
             format='%Y-%m-%d'
         )
-        animais = animais.dropna(subset=['data_nascimento'])
     
     return animais
 
