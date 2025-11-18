@@ -1,33 +1,28 @@
 #20250603 - testar select do get_total_leite_produzido;
 import pandas as pd
 import pymysql
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def get_db_connection(): #20250608
     conn = pymysql.connect(
-        host='135.148.122.162',
-        user='vedvoyager_vedvoyager_bpo_views',
-        password='Jordeci1@',
-        database='vedvoyager_bpo'
+        host=os.environ.get('DB_HOST'),
+        user=os.environ.get('DB_USER'),
+        password=os.environ.get('DB_PASSWORD'),
+        database=os.environ.get('DB_DATABASE_BPO')
     )
     return conn
 
 def get_db_connection_sc(): #20250608
     conn_sc = pymysql.connect(
-        host='135.148.122.162',
-        user='vedvoyager_vedvoyager_bpo_views',
-        password='Jordeci1@',
-        database='vedvoyager_vedvoyager_prod'
+        host=os.environ.get('DB_HOST'),
+        user=os.environ.get('DB_USER'),
+        password=os.environ.get('DB_PASSWORD'),
+        database=os.environ.get('DB_DATABASE_SC')
     )
-    return conn_sc
-
-def get_db_connection_teste(): 
-    conn_sc = pymysql.connect(
-        host='135.148.122.162',
-        user='vedvoyager_teste',
-        password='Jordeci1@',
-        database='vedvoyager_vedvoyager'
-    )
-    return conn_teste    
+    return conn_sc   
 
 def get_realizados_por_empresa(selected_empresa=None): #20250608
     conn = get_db_connection()

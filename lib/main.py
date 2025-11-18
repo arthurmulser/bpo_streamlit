@@ -1,9 +1,12 @@
 #20250313
 import streamlit as st
+from dotenv import load_dotenv
 from bpo import bpo
 from fin import fin
 from menu import menu
 from sc import sc
+
+load_dotenv()
 
 st.markdown(
     """
