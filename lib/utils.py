@@ -15,6 +15,15 @@ def get_db_connection(): #20250608
     )
     return conn
 
+def get_db_connection_lars(): #20251209
+    conn_sc = pymysql.connect(
+        host=os.environ.get('DB_HOST'),
+        user=os.environ.get('DB_USER'),
+        password=os.environ.get('DB_PASSWORD'),
+        database=os.environ.get('DB_DATABASE_LARS')
+    )
+    return conn_sc 
+
 def get_db_connection_sc(): #20250608
     conn_sc = pymysql.connect(
         host=os.environ.get('DB_HOST'),
@@ -22,7 +31,7 @@ def get_db_connection_sc(): #20250608
         password=os.environ.get('DB_PASSWORD'),
         database=os.environ.get('DB_DATABASE_SC')
     )
-    return conn_sc   
+    return conn_sc
 
 def get_realizados_por_empresa(selected_empresa=None): #20250608
     conn = get_db_connection()
