@@ -6,7 +6,7 @@ from utils import get_db_connection_lars
 import numpy as np
 import matplotlib.pyplot as plt
 
-CSV_DIR = Path(__file__).parent.parent / "_csv"
+CSV_DIR = Path(__file__).parent / "_csv"
 CSV_DIR.mkdir(exist_ok=True)
 
 def fetch_and_save_patrimonios_eventos(path: Path):

@@ -8,7 +8,7 @@ from utils import get_animais, get_db_connection_sc, get_media_leite_por_periodo
 
 # streamlit run .\sc_new.py --server.port 8501; streamlit run main.py --server.port 8502;
 
-CSV_DIR = Path(__file__).parent.parent / "_csv"
+CSV_DIR = Path(__file__).parent / "_csv"
 CSV_DIR.mkdir(exist_ok=True)
 
 COLOR_INACTIVE = '#B0B0B0'  # Cor para mães inativas no gráfico
