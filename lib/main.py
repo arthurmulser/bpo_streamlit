@@ -5,6 +5,8 @@ from bpo import bpo
 from fin import fin
 from menu import menu
 from sc import sc
+from sc_new import sc_new
+from lars_new import lars_new
 
 load_dotenv()
 
@@ -38,4 +40,8 @@ elif st.session_state.tela_atual == "B":
 elif st.session_state.tela_atual == "C":
     fin()
 elif st.session_state.tela_atual == "D":
-    sc()    
+    sc()
+elif st.session_state.tela_atual == "E":
+    sc_new()
+elif st.session_state.tela_atual == "F":
+    lars_new()    

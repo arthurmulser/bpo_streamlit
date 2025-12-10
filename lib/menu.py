@@ -13,3 +13,15 @@ def menu():
         st.session_state.tela_atual = "C"
     if st.button("GO TO SC "):
         st.session_state.tela_atual = "D"    
+
+    st.markdown("---")
+    
+    st.markdown('<h1 class="title">Módulos Novos</h1>', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("SC_NEW 📈"):
+            st.session_state.tela_atual = "E" 
+    with col2:
+        if st.button("LARS_NEW 📊"):
+            st.session_state.tela_atual = "F" 
+    st.markdown("---")
