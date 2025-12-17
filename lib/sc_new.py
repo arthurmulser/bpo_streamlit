@@ -64,6 +64,9 @@ def sc_new():
         st.markdown("""
             <h1 class="title">SC - CSV</h1>
         """, unsafe_allow_html=True)
+    with col2:
+        if st.button("<-"):
+            st.session_state.tela_atual = "A"     
 
     animais_csv = CSV_DIR / "view_animais.csv"
     eventos_csv = CSV_DIR / "view_eventos.csv"
