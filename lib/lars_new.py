@@ -97,19 +97,30 @@ def display_patrimonio_por_empresa(csv_path: Path):
         st.error("a coluna 'nome_empresa' não foi encontrada no csv.")
         return
 
-    empresas = df['nome_empresa'].dropna().unique()
-    empresa_selecionada = st.selectbox("empresa:", options=empresas)
+    # adiciona a opção '-selecione-' e ordena as empresas;
+    empresa_options = ['-selecione-'] + sorted(df['nome_empresa'].dropna().unique().tolist())
+    empresa_selecionada = st.selectbox("empresa:", options=empresa_options)
 
-    if empresa_selecionada:
+    if empresa_selecionada and empresa_selecionada != '-selecione-': # verifica se uma empresa válida foi selecionada;
         df_empresa = df[df['nome_empresa'] == empresa_selecionada].copy()
 
         if df_empresa.empty:
             st.info("nenhum dado de patrimônio encontrado para esta empresa.")
             return
 
-        target_currency = st.selectbox("converter para:", options=["BRL", "USD"])
+        # adiciona a opção '-selecione-' para as moedas;
+        target_currency_options = ['-selecione-', 'BRL', 'USD']
+        target_currency = st.selectbox("converter para:", options=target_currency_options)
 
-        if target_currency:
+        if target_currency and target_currency != '-selecione-': # verifica se uma moeda válida foi selecionada;
+            # exibe as taxas de conversão utilizadas;
+            source_currencies = df_empresa['standard_currency'].dropna().unique()
+            for source_curr in source_currencies:
+                if source_curr != target_currency:
+                    rate = get_exchange_rate(source_curr, target_currency)
+                    if rate is not None:
+                        st.info(f"cotação {source_curr} para {target_currency}: {rate:.4f}")
+
             # garante que as colunas 'valor' e 'quantidade' são numéricas;
             df_empresa['valor'] = pd.to_numeric(df_empresa['valor'], errors='coerce')
             df_empresa['quantidade'] = pd.to_numeric(df_empresa['quantidade'], errors='coerce')
@@ -119,7 +130,6 @@ def display_patrimonio_por_empresa(csv_path: Path):
             df_empresa['valor_total'] = df_empresa['valor'] * df_empresa['quantidade']
 
             # converte a moeda;
-            rates = {}
             df_empresa['valor_convertido'] = df_empresa.apply(
                 lambda row: row['valor_total'] * get_exchange_rate(row['standard_currency'], target_currency)
                 if row['standard_currency'] != target_currency else row['valor_total'],
@@ -175,7 +185,7 @@ def display_patrimonio_por_empresa(csv_path: Path):
                     'preco_medio_convertido': f'Preço Médio ({target_currency})'
                 }))
             else:
-                st.info("Não há dados de patrimônio suficientes para exibir.")
+                st.info("não há dados de patrimônio suficientes para exibir.")
 
 
 if __name__ == "__main__":
