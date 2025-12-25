@@ -5,6 +5,8 @@ import streamlit as st
 from utils import get_db_connection_lars
 import numpy as np
 import matplotlib.pyplot as plt
+import yfinance as yf
+from functools import lru_cache
 
 CSV_DIR = Path(__file__).parent / "_csv"
 CSV_DIR.mkdir(exist_ok=True)
@@ -23,6 +25,7 @@ def fetch_and_save_patrimonios_eventos(path: Path):
         nome_patrimonio,
         bolsa_valores,
         broker,
+        standard_currency,
         nome_empresa
     FROM
         patrimonios_eventos;
@@ -62,8 +65,22 @@ def lars_new():
     display_patrimonio_por_empresa(patrimonios_eventos_csv)
 
 
+@lru_cache(maxsize=10)
+def get_exchange_rate(from_currency, to_currency):
+    """busca a taxa de câmbio usando o yahoo finance e armazena em cache."""
+    if from_currency == to_currency:
+        return 1.0
+    try:
+        ticker = f"{from_currency}{to_currency}=X"
+        rate_data = yf.Ticker(ticker)
+        rate = rate_data.history(period='1d')['Close'].iloc[0]
+        return rate
+    except Exception as e:
+        st.error(f"não foi possível obter a taxa de câmbio para {from_currency} para {to_currency}: {e}.")
+        return None
+
 def display_patrimonio_por_empresa(csv_path: Path):
-    """exibe os patrimônios por empresa com gráfico e tabela."""
+    """exibe os patrimônios por empresa com conversão de moeda."""
     st.write("### patrimônios por empresa")
 
     if not csv_path.exists():
@@ -90,57 +107,75 @@ def display_patrimonio_por_empresa(csv_path: Path):
             st.info("nenhum dado de patrimônio encontrado para esta empresa.")
             return
 
-        # garante que as colunas 'valor' e 'quantidade' são numéricas;
-        df_empresa['valor'] = pd.to_numeric(df_empresa['valor'], errors='coerce')
-        df_empresa['quantidade'] = pd.to_numeric(df_empresa['quantidade'], errors='coerce')
-        df_empresa.dropna(subset=['valor', 'quantidade'], inplace=True)
-        
-        # calcula o preço médio ponderado e a quantidade total;
-        df_empresa['valor_total'] = df_empresa['valor'] * df_empresa['quantidade']
-        
-        agg_funcs = {
-            'quantidade': ('quantidade', 'sum'),
-            'valor_total': ('valor_total', 'sum')
-        }
-        
-        patrimonio_agg = df_empresa.groupby('nome_patrimonio').agg(**agg_funcs).reset_index()
+        target_currency = st.selectbox("converter para:", options=["BRL", "USD"])
 
-        # evita divisão por zero;
-        patrimonio_agg['preco_medio'] = np.where(
-            patrimonio_agg['quantidade'] != 0, 
-            patrimonio_agg['valor_total'] / patrimonio_agg['quantidade'], 
-            0
-        )
+        if target_currency:
+            # garante que as colunas 'valor' e 'quantidade' são numéricas;
+            df_empresa['valor'] = pd.to_numeric(df_empresa['valor'], errors='coerce')
+            df_empresa['quantidade'] = pd.to_numeric(df_empresa['quantidade'], errors='coerce')
+            df_empresa.dropna(subset=['valor', 'quantidade', 'standard_currency'], inplace=True)
+            
+            # calcula o valor total original;
+            df_empresa['valor_total'] = df_empresa['valor'] * df_empresa['quantidade']
 
-        st.write(f"Patrimônios de: **{empresa_selecionada}**")
+            # converte a moeda;
+            rates = {}
+            df_empresa['valor_convertido'] = df_empresa.apply(
+                lambda row: row['valor_total'] * get_exchange_rate(row['standard_currency'], target_currency)
+                if row['standard_currency'] != target_currency else row['valor_total'],
+                axis=1
+            )
+            df_empresa.dropna(subset=['valor_convertido'], inplace=True)
 
-        # gráfico de barras horizontais;
-        if not patrimonio_agg.empty:
-            fig, ax = plt.subplots(figsize=(10, len(patrimonio_agg) * 0.5)) # adjust figure size dynamically;
-            bars = ax.barh(patrimonio_agg['nome_patrimonio'], patrimonio_agg['valor_total'], color='skyblue')
-            ax.set_xlabel('Valor Total')
-            ax.set_title(f'Valor Total de Patrimônios por Empresa ({empresa_selecionada})')
-            ax.xaxis.set_major_formatter(plt.FormatStrFormatter('R$ %.2f')) # format x-axis as currency;
+            if df_empresa.empty:
+                st.warning("não foi possível converter os valores para a moeda de destino.")
+                return
 
-            # adicionar a quantidade em branco sobre cada barra;
-            for bar, quantidade in zip(bars, patrimonio_agg['quantidade']):
-                ax.text(bar.get_width(), bar.get_y() + bar.get_height()/2, 
-                        f'{int(quantidade)}', 
-                        va='center', ha='left', color='white', fontsize=9, 
-                        bbox=dict(facecolor='black', alpha=0.5, edgecolor='none', boxstyle='round,pad=0.2'))
+            # agrega os dados após a conversão;
+            agg_funcs = {
+                'quantidade': ('quantidade', 'sum'),
+                'valor_convertido': ('valor_convertido', 'sum')
+            }
+            patrimonio_agg = df_empresa.groupby('nome_patrimonio').agg(**agg_funcs).reset_index()
 
-            plt.tight_layout()
-            st.pyplot(fig)
+            # evita divisão por zero;
+            patrimonio_agg['preco_medio_convertido'] = np.where(
+                patrimonio_agg['quantidade'] != 0,
+                patrimonio_agg['valor_convertido'] / patrimonio_agg['quantidade'],
+                0
+            )
 
-            # tabela de dados;
-            st.dataframe(patrimonio_agg[['nome_patrimonio', 'quantidade', 'preco_medio']].rename(columns={
-                'nome_patrimonio': 'Patrimônio',
-                'quantidade': 'Quantidade Total',
-                'preco_medio': 'Preço Médio'
-            }))
-        else:
-            st.info("não há dados de patrimônio suficientes para exibir.")
+            st.write(f"Patrimônios de: **{empresa_selecionada}** em **{target_currency}**")
 
+            # gráfico de barras horizontais;
+            if not patrimonio_agg.empty:
+                fig, ax = plt.subplots(figsize=(10, len(patrimonio_agg) * 0.5))
+                bars = ax.barh(patrimonio_agg['nome_patrimonio'], patrimonio_agg['valor_convertido'], color='skyblue')
+                
+                currency_format = 'R$ {:,.2f}' if target_currency == 'BRL' else '$ {:,.2f}'
+                ax.xaxis.set_major_formatter(plt.FormatStrFormatter(currency_format.replace('R$', 'R\\$')))
+
+
+                ax.set_xlabel(f'Valor Total ({target_currency})')
+                ax.set_title(f'Valor Total de Patrimônios por Empresa ({empresa_selecionada})')
+
+                for bar, quantidade in zip(bars, patrimonio_agg['quantidade']):
+                    ax.text(bar.get_width(), bar.get_y() + bar.get_height()/2,
+                            f'{int(quantidade)}',
+                            va='center', ha='left', color='white', fontsize=9,
+                            bbox=dict(facecolor='black', alpha=0.5, edgecolor='none', boxstyle='round,pad=0.2'))
+
+                plt.tight_layout()
+                st.pyplot(fig)
+
+                # tabela de dados;
+                st.dataframe(patrimonio_agg[['nome_patrimonio', 'quantidade', 'preco_medio_convertido']].rename(columns={
+                    'nome_patrimonio': 'Patrimônio',
+                    'quantidade': 'Quantidade Total',
+                    'preco_medio_convertido': f'Preço Médio ({target_currency})'
+                }))
+            else:
+                st.info("Não há dados de patrimônio suficientes para exibir.")
 
 
 if __name__ == "__main__":
