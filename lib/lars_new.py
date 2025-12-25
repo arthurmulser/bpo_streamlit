@@ -5,6 +5,7 @@ import streamlit as st
 from utils import get_db_connection_lars
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import yfinance as yf
 from functools import lru_cache
 
@@ -203,11 +204,19 @@ def display_patrimonio_por_empresa(csv_path: Path):
                 st.pyplot(fig)
 
                 # tabela de dados;
-                st.dataframe(patrimonio_agg[['nome_patrimonio', 'quantidade', 'preco_medio_convertido']].rename(columns={
-                    'nome_patrimonio': 'Patrimônio',
-                    'quantidade': 'Quantidade Total',
-                    'preco_medio_convertido': f'Preço Médio ({target_currency})'
-                }))
+                st.dataframe(
+                    patrimonio_agg[['nome_patrimonio', 'quantidade', 'preco_medio_convertido']].rename(columns={
+                        'nome_patrimonio': 'Patrimônio',
+                        'quantidade': 'Quantidade Total',
+                        'preco_medio_convertido': f'Preço Médio ({target_currency})'
+                    }),
+                    column_config={
+                        f'Preço Médio ({target_currency})': st.column_config.NumberColumn(
+                            f'Preço Médio ({target_currency})',
+                            format="%.2f",
+                        )
+                    }
+                )
             else:
                 st.info("não há dados de patrimônio suficientes para exibir.")
 
