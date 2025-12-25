@@ -162,8 +162,32 @@ def display_patrimonio_por_empresa(csv_path: Path):
                 fig, ax = plt.subplots(figsize=(10, len(patrimonio_agg) * 0.5))
                 bars = ax.barh(patrimonio_agg['nome_patrimonio'], patrimonio_agg['valor_convertido'], color='skyblue')
                 
-                currency_format = 'R$ {:,.2f}' if target_currency == 'BRL' else '$ {:,.2f}'
-                ax.xaxis.set_major_formatter(plt.FormatStrFormatter(currency_format.replace('R$', 'R\\$')))
+                # custom formatter for currency and integer values;
+                def currency_formatter(x, pos):
+                    if target_currency == 'BRL':
+                        return f"R$ {int(x):,}".replace(",", "X").replace(".", ",").replace("X", ".") # brazilian format;
+                    else: # assuming usd;
+                        return f"$ {int(x):,}" # standard usd format;
+
+                ax.xaxis.set_major_formatter(mticker.FuncFormatter(currency_formatter))
+                
+                # set x-axis ticks to be integer multiples of 10, with ~10 divisions;
+                max_val = patrimonio_agg['valor_convertido'].max()
+                if max_val > 0:
+                    # use to try and get around 10 integer ticks, with steps that are 'nice';
+                    ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=10, steps=[1, 2, 5, 10], integer=True, prune='lower'))
+                    
+                    # ensure the upper limit of the axis is a multiple of the step and slightly above max_val;
+                    # this ensures roughly 10 divisions and ends on a 'nice' number;
+                    locator = ax.xaxis.get_major_locator()
+                    ticks = locator.tick_values(ax.get_xlim()[0], max_val * 1.05) # get potential ticks up to 5% above max;
+                    if len(ticks) > 1:
+                        # find a step based on the generated ticks;
+                        step = ticks[1] - ticks[0]
+                        upper_bound = np.ceil(max_val / step) * step
+                        ax.set_xlim(right=upper_bound)
+                    elif max_val > 0: # handle cases where only one tick is generated;
+                        ax.set_xlim(right=np.ceil(max_val / 10) * 10) # set upper bound to next multiple of 10;
 
 
                 ax.set_xlabel(f'Valor Total ({target_currency})')
