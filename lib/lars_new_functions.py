@@ -22,6 +22,7 @@ def get_current_price(nome_patrimonio: str, bolsa_valores: str):
         return None
 
     ticker_symbol = nome_patrimonio.upper() # ensure uppercase;
+    ticker_symbol = ticker_symbol.replace('.', '-') # replace dot with hyphen for class shares;
     if bolsa_valores.upper() == 'B3':
         if not ticker_symbol.endswith('.SA'):
             ticker_symbol = f"{ticker_symbol}.SA"
