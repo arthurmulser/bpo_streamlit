@@ -6,6 +6,7 @@ from utils import get_db_connection_lars
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+from lars_new_functions import get_current_price
 import yfinance as yf
 from functools import lru_cache
 
@@ -156,6 +157,35 @@ def display_patrimonio_por_empresa(csv_path: Path):
                 0
             )
 
+            # busca o preço atual para cada patrimônio;
+            with st.spinner("Buscando cotações atuais..."):
+                # cria um mapa de nome_patrimonio para bolsa_valores;
+                bolsa_map = df_empresa.drop_duplicates(subset=['nome_patrimonio'])[['nome_patrimonio', 'bolsa_valores']].set_index('nome_patrimonio')
+                patrimonio_agg = patrimonio_agg.join(bolsa_map, on='nome_patrimonio')
+
+                # busca o preço atual e sua moeda (retorna uma tupla);
+                price_data = patrimonio_agg.apply(
+                    lambda row: get_current_price(row['nome_patrimonio'], row['bolsa_valores']) if pd.notna(row['bolsa_valores']) else None,
+                    axis=1
+                )
+
+                # desempacota a tupla em duas colunas;
+                patrimonio_agg[['preco_atual_raw', 'preco_atual_moeda']] = pd.DataFrame(price_data.tolist(), index=patrimonio_agg.index)
+
+                # converte o preço atual para a moeda de destino;
+                def convert_price(row):
+                    if pd.isna(row['preco_atual_raw']) or pd.isna(row['preco_atual_moeda']):
+                        return None
+                    if row['preco_atual_moeda'] == target_currency:
+                        return row['preco_atual_raw']
+                    
+                    rate = get_exchange_rate(row['preco_atual_moeda'], target_currency)
+                    if rate is None:
+                        return None # falha na conversão;
+                    return row['preco_atual_raw'] * rate
+
+                patrimonio_agg['preco_atual_convertido'] = patrimonio_agg.apply(convert_price, axis=1)
+
             st.write(f"Patrimônios de: **{empresa_selecionada}** em **{target_currency}**")
 
             # gráfico de barras horizontais;
@@ -194,26 +224,47 @@ def display_patrimonio_por_empresa(csv_path: Path):
                 ax.set_xlabel(f'Valor Total ({target_currency})')
                 ax.set_title(f'Valor Total de Patrimônios por Empresa ({empresa_selecionada})')
 
-                for bar, quantidade in zip(bars, patrimonio_agg['quantidade']):
-                    ax.text(bar.get_width(), bar.get_y() + bar.get_height()/2,
-                            f'{int(quantidade)}',
-                            va='center', ha='left', color='white', fontsize=9,
+                # itera sobre as barras, quantidades e preços atuais para adicionar os textos;
+                for bar, quantidade, preco_atual_convertido in zip(bars, patrimonio_agg['quantidade'], patrimonio_agg['preco_atual_convertido']):
+                    # texto da quantidade (permanece o mesmo, com um pequeno espaço);
+                    ax.text(bar.get_width() * 0.98, bar.get_y() + bar.get_height()/2,
+                            f'{int(quantidade)} ',
+                            va='center', ha='right', color='white', fontsize=9,
                             bbox=dict(facecolor='black', alpha=0.5, edgecolor='none', boxstyle='round,pad=0.2'))
+
+                    # texto do preço atual, à direita da barra;
+                    if pd.notna(preco_atual_convertido):
+                        # define o formato da moeda com base na moeda de destino;
+                        currency_symbol = "R$ " if target_currency == 'BRL' else "$ "
+                        
+                        # adiciona um pequeno espaço para o texto não ficar colado na barra;
+                        padding = ax.get_xlim()[1] * 0.01 
+                        
+                        ax.text(bar.get_width() + padding, bar.get_y() + bar.get_height()/2,
+                                f'| Cotação: {currency_symbol}{preco_atual_convertido:.2f}',
+                                va='center', 
+                                ha='left', 
+                                color='green', 
+                                fontsize=10,
+                                weight='bold')
 
                 plt.tight_layout()
                 st.pyplot(fig)
 
                 # tabela de dados;
                 st.dataframe(
-                    patrimonio_agg[['nome_patrimonio', 'quantidade', 'preco_medio_convertido']].rename(columns={
+                    patrimonio_agg[['nome_patrimonio', 'quantidade', 'preco_medio_convertido', 'preco_atual_convertido']].rename(columns={
                         'nome_patrimonio': 'Patrimônio',
                         'quantidade': 'Quantidade Total',
-                        'preco_medio_convertido': f'Preço Médio ({target_currency})'
+                        'preco_medio_convertido': f'Preço Médio ({target_currency})',
+                        'preco_atual_convertido': f'Preço Atual ({target_currency})'
                     }),
                     column_config={
                         f'Preço Médio ({target_currency})': st.column_config.NumberColumn(
-                            f'Preço Médio ({target_currency})',
-                            format="%.2f",
+                            format="%.2f"
+                        ),
+                        f'Preço Atual ({target_currency})': st.column_config.NumberColumn(
+                            format="%.2f"
                         )
                     }
                 )
