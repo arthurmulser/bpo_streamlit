@@ -6,7 +6,7 @@ from utils import get_db_connection_lars
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-from lars_new_functions import get_current_price
+from lars_new_functions import get_current_price, calculate_patrimonio_with_splits
 import yfinance as yf
 from functools import lru_cache
 
@@ -143,12 +143,8 @@ def display_patrimonio_por_empresa(csv_path: Path):
                 st.warning("não foi possível converter os valores para a moeda de destino.")
                 return
 
-            # agrega os dados após a conversão;
-            agg_funcs = {
-                'quantidade': ('quantidade', 'sum'),
-                'valor_convertido': ('valor_convertido', 'sum')
-            }
-            patrimonio_agg = df_empresa.groupby('nome_patrimonio').agg(**agg_funcs).reset_index()
+            # processa os eventos, incluindo desdobramentos;
+            patrimonio_agg = df_empresa.groupby('nome_patrimonio').apply(calculate_patrimonio_with_splits).reset_index()
 
             # evita divisão por zero;
             patrimonio_agg['preco_medio_convertido'] = np.where(

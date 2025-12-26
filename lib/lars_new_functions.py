@@ -1,6 +1,8 @@
 from functools import lru_cache
 import yfinance as yf
 import streamlit as st # keep this for st.warning, can be removed if moved to pure backend;
+import pandas as pd
+
 
 @lru_cache(maxsize=100)
 def get_current_price(nome_patrimonio: str, bolsa_valores: str):
@@ -52,3 +54,29 @@ def get_current_price(nome_patrimonio: str, bolsa_valores: str):
 
     except Exception as e:
         return None
+
+def calculate_patrimonio_with_splits(df_events):
+    """
+    calcula a quantidade total e o valor total de um patrimônio,
+    levando em conta os eventos de desdobramento.
+    """
+    df_events = df_events.sort_values(by='dt_evento')
+    
+    total_quantity = 0
+    total_value = 0
+    
+    for _, row in df_events.iterrows():
+        event_type = row['evento']
+        quantity = row['quantidade']
+        value = row['valor_convertido']
+
+        if event_type == 'C':  # compra;
+            total_quantity += quantity
+            total_value += value
+        elif event_type == 'B':  # bonificação;
+            total_quantity += quantity
+        elif event_type == 'D':  # desdobramento;
+            if total_quantity > 0:
+                total_quantity *= quantity
+    
+    return pd.Series({'quantidade': total_quantity, 'valor_convertido': total_value})
