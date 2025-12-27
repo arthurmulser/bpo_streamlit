@@ -9,6 +9,7 @@ import matplotlib.ticker as mticker
 from lars_new_functions import get_current_price, calculate_patrimonio_with_splits
 import yfinance as yf
 from functools import lru_cache
+from _constants import COR_VALOR_ACIMA, COR_VALOR_ABAIXO
 
 CSV_DIR = Path(__file__).parent / "_csv"
 CSV_DIR.mkdir(exist_ok=True)
@@ -183,11 +184,25 @@ def display_patrimonio_por_empresa(csv_path: Path):
                 patrimonio_agg['preco_atual_convertido'] = patrimonio_agg.apply(convert_price, axis=1)
 
             st.write(f"Patrimônios de: **{empresa_selecionada}** em **{target_currency}**")
+            
+            patrimonio_agg['valor_patrimonial_atual'] = patrimonio_agg['quantidade'] * patrimonio_agg['preco_atual_convertido']
+
 
             # gráfico de barras horizontais;
             if not patrimonio_agg.empty:
                 fig, ax = plt.subplots(figsize=(10, len(patrimonio_agg) * 0.5))
-                bars = ax.barh(patrimonio_agg['nome_patrimonio'], patrimonio_agg['valor_convertido'], color='skyblue')
+
+                y_pos = np.arange(len(patrimonio_agg['nome_patrimonio']))
+
+                # barra de valor total de compra;
+                ax.barh(y_pos, patrimonio_agg['valor_convertido'], color='skyblue', height=0.6, label='valor total de compra')
+
+                # barra de valor patrimonial atual;
+                colors = [COR_VALOR_ACIMA if v_atual >= v_conv else COR_VALOR_ABAIXO for v_atual, v_conv in zip(patrimonio_agg['valor_patrimonial_atual'], patrimonio_agg['valor_convertido'])]
+                ax.barh(y_pos, patrimonio_agg['valor_patrimonial_atual'], color=colors, height=0.3, label='valor patrimonial atual')
+
+                ax.set_yticks(y_pos)
+                ax.set_yticklabels(patrimonio_agg['nome_patrimonio'])
                 
                 # custom formatter for currency and integer values;
                 def currency_formatter(x, pos):
@@ -199,7 +214,7 @@ def display_patrimonio_por_empresa(csv_path: Path):
                 ax.xaxis.set_major_formatter(mticker.FuncFormatter(currency_formatter))
                 
                 # set x-axis ticks to be integer multiples of 10, with ~10 divisions;
-                max_val = patrimonio_agg['valor_convertido'].max()
+                max_val = max(patrimonio_agg['valor_convertido'].max(), patrimonio_agg['valor_patrimonial_atual'].max())
                 if max_val > 0:
                     # use to try and get around 10 integer ticks, with steps that are 'nice';
                     ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=10, steps=[1, 2, 5, 10], integer=True, prune='lower'))
@@ -219,30 +234,11 @@ def display_patrimonio_por_empresa(csv_path: Path):
 
                 ax.set_xlabel(f'Valor Total ({target_currency})')
                 ax.set_title(f'Valor Total de Patrimônios por Empresa ({empresa_selecionada})')
-
-                # itera sobre as barras, quantidades e preços atuais para adicionar os textos;
-                for bar, quantidade, preco_atual_convertido in zip(bars, patrimonio_agg['quantidade'], patrimonio_agg['preco_atual_convertido']):
-                    # texto da quantidade (permanece o mesmo, com um pequeno espaço);
-                    ax.text(bar.get_width() * 0.98, bar.get_y() + bar.get_height()/2,
-                            f'{int(quantidade)} ',
-                            va='center', ha='right', color='white', fontsize=9,
-                            bbox=dict(facecolor='black', alpha=0.5, edgecolor='none', boxstyle='round,pad=0.2'))
-
-                    # texto do preço atual, à direita da barra;
-                    if pd.notna(preco_atual_convertido):
-                        # define o formato da moeda com base na moeda de destino;
-                        currency_symbol = "R$ " if target_currency == 'BRL' else "$ "
-                        
-                        # adiciona um pequeno espaço para o texto não ficar colado na barra;
-                        padding = ax.get_xlim()[1] * 0.01 
-                        
-                        ax.text(bar.get_width() + padding, bar.get_y() + bar.get_height()/2,
-                                f'| Cotação: {currency_symbol}{preco_atual_convertido:.2f}',
-                                va='center', 
-                                ha='left', 
-                                color='green', 
-                                fontsize=10,
-                                weight='bold')
+                
+                # adiciona legendas;
+                handles, labels = plt.gca().get_legend_handles_labels()
+                by_label = dict(zip(labels, handles))
+                ax.legend(by_label.values(), by_label.keys())
 
                 plt.tight_layout()
                 st.pyplot(fig)
