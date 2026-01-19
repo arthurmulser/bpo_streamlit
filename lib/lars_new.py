@@ -15,7 +15,7 @@ CSV_DIR = Path(__file__).parent / "_csv"
 CSV_DIR.mkdir(exist_ok=True)
 
 def fetch_and_save_patrimonios_eventos(path: Path):
-    """Busca `patrimonios_eventos` do banco usando `get_db_connection_lars()` e salva em csv."""
+    """busca `view_patrimonios_eventos` do banco usando `get_db_connection_lars()` e salva em csv."""
     query = """
     SELECT
         idtb_patrimonios_eventos,
@@ -29,9 +29,10 @@ def fetch_and_save_patrimonios_eventos(path: Path):
         bolsa_valores,
         broker,
         standard_currency,
-        nome_empresa
+        nome_empresa,
+        use_decimal
     FROM
-        patrimonios_eventos;
+        view_patrimonios_eventos;
     """
     conn = get_db_connection_lars()
     try:
