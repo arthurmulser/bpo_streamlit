@@ -3,6 +3,8 @@ import yfinance as yf
 import streamlit as st # keep this for st.warning, can be removed if moved to pure backend;
 import pandas as pd
 import math
+from pathlib import Path
+from utils import get_db_connection_lars
 
 
 def get_current_price(nome_patrimonio: str, bolsa_valores: str, data_fim: datetime = None):
@@ -14,7 +16,7 @@ def get_current_price(nome_patrimonio: str, bolsa_valores: str, data_fim: dateti
     args:
         nome_patrimonio (str): o símbolo do patrimônio (e.g., 'itsa4', 'aapl').
         bolsa_valores (str): a bolsa onde o ativo é negociado (e.g., 'b3', 'nasdaq').
-        data (datetime, optional): a data para a qual o preço deve ser buscado. defaults to none (preço atual).
+        data_fim (datetime, optional): a data para a qual o preço deve ser buscado. defaults to none (preço atual).
     returns:
         tuple[float, str] or none: uma tupla contendo o preço e a moeda (e.g., (50.25, 'brl')),
                                      ou none se não for possível obtê-lo.
@@ -119,3 +121,33 @@ def calculate_patrimonio_with_splits(df_events, data_fim: datetime = None):
                     total_quantity = math.floor(total_quantity)
     
     return pd.Series({'quantidade': total_quantity, 'valor_convertido': total_value})
+
+def fetch_and_save_patrimonios_eventos(path: Path): 
+    """busca `view_patrimonios_eventos` do banco usando `get_db_connection_lars()` e salva em csv."""
+    query = """
+    SELECT
+        idtb_patrimonios_eventos,
+        idtb_patrimonios,
+        dt_evento,
+        evento,
+        quantidade,
+        valor,
+        idtb_empresas,
+        nome_patrimonio,
+        bolsa_valores,
+        broker,
+        standard_currency,
+        nome_empresa,
+        use_decimal
+    FROM
+        view_patrimonios_eventos;
+    """
+    conn = get_db_connection_lars()
+    try:
+        df = pd.read_sql(query, conn)
+        if not df.empty:
+            df['dt_evento'] = pd.to_datetime(df['dt_evento'], errors='coerce')
+        df.to_csv(path, index=False)
+        return df
+    finally:
+        conn.close()

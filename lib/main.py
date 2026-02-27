@@ -7,6 +7,7 @@ from menu import menu
 from sc import sc
 from sc_new import sc_new
 from lars_new import lars_new
+from lars_new_20260227 import lars_new_20260227
 
 load_dotenv()
 
@@ -45,3 +46,5 @@ elif st.session_state.tela_atual == "E":
     sc_new()
 elif st.session_state.tela_atual == "F":
     lars_new()    
+elif st.session_state.tela_atual == "G": 
+    lars_new_20260227()
