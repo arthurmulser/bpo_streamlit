@@ -27,6 +27,6 @@ def menu():
         if st.button("LARS_NEW 📊"):
             st.session_state.tela_atual = "F" 
     with col3: # new column for the new button;
-        if st.button("LARS_NEW_20260227 🧪"): # new button;
+        if st.button("LARS_227 📊"): # new button;
             st.session_state.tela_atual = "G" # new screen state;
     st.markdown("---")
