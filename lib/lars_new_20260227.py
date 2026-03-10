@@ -45,16 +45,40 @@ def lars_new_20260227():
             
             st.write("### filtros;")
             
-            # get unique company names for the selectbox;
+            ###
             if 'nome_empresa' in df.columns:
-                unique_empresas = df['nome_empresa'].unique()
+                unique_nome_empresa = df['nome_empresa'].unique()
                 
-                # add selectbox for company name;
-                selected_empresa = st.selectbox(
-                    "selecione a empresa:",
-                    ['todas'] + sorted(list(unique_empresas)) # add 'all' option and sort;
+                selected_nome_empresa = st.selectbox(
+                    "selecione nome_empresa:",
+                    ['---'] + sorted(list(unique_nome_empresa)) 
                 )
-    
+            ###
+            if 'standard_currency' in df.columns:
+                unique_standard_currency = df['standard_currency'].unique()
+                
+                selected_standard_currency = st.selectbox(
+                    "selecione standard_currency:",
+                    ['---'] + sorted(list(unique_standard_currency)) 
+                )    
+            ###
+            if 'bolsa_valores' in df.columns:
+                unique_bolsa_valores = df['bolsa_valores'].unique()
+                
+                selected_bolsa_valores = st.selectbox(
+                    "selecione bolsa_valores:",
+                    ['---'] + sorted(list(unique_bolsa_valores)) 
+                )    
+            ### 
+            if 'broker' in df.columns:
+                unique_broker = df['broker'].unique()
+                
+                selected_broker = st.selectbox(
+                    "selecione broker:",
+                    ['---'] + sorted(list(unique_broker)) 
+                )       
+            ###
+
             else:
                 st.warning("a coluna 'nome_empresa' não foi encontrada no csv;")
                 df_display = df.copy() # display all if column missing;
