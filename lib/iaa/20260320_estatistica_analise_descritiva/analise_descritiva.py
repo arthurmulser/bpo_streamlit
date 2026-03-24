@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy import stats
 
-# 1. carregar dados (se o arquivo usar ';' como separador, mude para sep=';');
+# 1. carregar dados;
 try:
     df = pd.read_csv('infant_deaths.csv')
 except FileNotFoundError:
@@ -23,7 +23,6 @@ print("=" * 80)
 print(f"\nvariável analisada: {df.columns[0]}")
 print(f"número de observações válidas: {df.shape[0]}\n")
 
-# como só temos uma coluna, podemos acessar direto;
 data = df['infant_deaths']
 
 print(f"{'=' * 80}")
@@ -37,22 +36,16 @@ print(f"máximo:                           {data.max():.4f}")
 print(f"amplitude:                        {data.max() - data.min():.4f}")
 print(f"distância interquartílica (iqr):  {data.quantile(0.75) - data.quantile(0.25):.4f}")
 
-# coeficiente de variação (em %);
 cv = (data.std() / data.mean() * 100) if data.mean() != 0 else 0
 print(f"coeficiente de variação:          {cv:.4f}%")
 
-# moda;
 moda = data.mode()
 print(f"moda:                             {moda[0] if not moda.empty else 'sem moda'}")
 
-# assimetria (skewness);
 print(f"assimetria (skewness):            {stats.skew(data):.4f}")
 
-# curtose;
 print(f"curtose:                          {stats.kurtosis(data):.4f}")
 print("=" * 80) 
-
-# aqui;
 
 fig, (ax_hist, ax_box) = plt.subplots(1, 2, figsize=(12, 5))
 
