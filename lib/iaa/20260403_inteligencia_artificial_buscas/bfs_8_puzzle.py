@@ -76,3 +76,13 @@ initial_board = [ # estado inicial;
 
 solve_8_puzzle(initial_board)
 
+"""
+eu implementei a busca em largura (bfs) seguindo o princípio de explorar o espaço em camadas; 
+
+ao utilizar uma fila (deque) para gerenciar os estados a serem visitados, eu garanto que todos os nós de um determinado nível sejam processados antes de avançar para o próximo;
+
+utilizado um conjunto para rastrear os estados já visitados, o que é essencial para evitar ciclos e repetições desnecessárias, tornando a execução mais eficiente dentro das limitações de memória do algoritmo;
+
+na implementação do quebra-cabeça de 8 peças, criei funções auxiliares para localizar o espaço vazio e gerar os estados vizinhos, respeitando todas as regras de movimentação permitidas;
+"""
+
