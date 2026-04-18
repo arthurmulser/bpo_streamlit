@@ -47,6 +47,7 @@ def dfs(grafo, no, visitados=None, no_destino=""):
     
     else:
         for vizinho in grafo[no]:
+            print(f'grafo[no]: {grafo[no]}') # grafo filho do no;
             if vizinho not in visitados:
                 if dfs(grafo, vizinho, visitados, no_destino):
                     return True
