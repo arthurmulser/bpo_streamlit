@@ -8,6 +8,7 @@ plotly
 pymysql
 python-dotenv
 
+scikit-learn
 scipy
 seaborn
 streamlit
