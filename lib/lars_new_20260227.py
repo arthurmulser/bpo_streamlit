@@ -51,7 +51,7 @@ def lars_new_20260227():
                 
                 selected_nome_empresa = st.selectbox(
                     "selecione nome_empresa:",
-                    ['---'] + sorted(list(unique_nome_empresa)) 
+                    ['---'] + sorted(list(unique_nome_empresa), key=str) # key=str -> converte para string antes de comparar;
                 )
             ###
             if 'standard_currency' in df.columns:
@@ -59,7 +59,7 @@ def lars_new_20260227():
                 
                 selected_standard_currency = st.selectbox(
                     "selecione standard_currency:",
-                    ['---'] + sorted(list(unique_standard_currency)) 
+                    ['---'] + sorted(list(unique_standard_currency), key=str) 
                 )    
             ###
             if 'bolsa_valores' in df.columns:
@@ -67,7 +67,7 @@ def lars_new_20260227():
                 
                 selected_bolsa_valores = st.selectbox(
                     "selecione bolsa_valores:",
-                    ['---'] + sorted(list(unique_bolsa_valores)) 
+                    ['---'] + sorted(list(unique_bolsa_valores), key=str) 
                 )    
             ### 
             if 'broker' in df.columns:
@@ -75,7 +75,7 @@ def lars_new_20260227():
                 
                 selected_broker = st.selectbox(
                     "selecione broker:",
-                    ['---'] + sorted(list(unique_broker)) 
+                    ['---'] + sorted(list(unique_broker), key=str) 
                 )       
             ###
 
