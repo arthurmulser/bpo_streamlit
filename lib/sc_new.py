@@ -289,8 +289,8 @@ def sc_new():
         df_status = df_status[['animal', 'ativa', 'idtb_ativo_raw']].drop_duplicates()
 
         df_prod_total = pd.merge(df_prod_total, df_status, on='animal', how='left') # junta a informação de status no dataframe de produção;
-        df_prod_total['ativa'].fillna(False, inplace=True)
-        df_prod_total['idtb_ativo_raw'].fillna(0, inplace=True)
+        df_prod_total['ativa'] = df_prod_total['ativa'].fillna(False) # preenche ativa vazios com false;
+        df_prod_total['idtb_ativo_raw'] = df_prod_total['idtb_ativo_raw'].fillna(0) # preenche idtb_ativo_raw vazios com zero;
 
         df_prod_total['status_cor'] = df_prod_total['ativa'].apply(lambda x: 'Ativa' if x else 'Inativa') # cria a coluna de cor e a nova label para o eixo x;
         df_prod_total['animal_label'] = df_prod_total['animal'] + " (Ativo: " + df_prod_total['idtb_ativo_raw'].astype(int).astype(str) + ")"
