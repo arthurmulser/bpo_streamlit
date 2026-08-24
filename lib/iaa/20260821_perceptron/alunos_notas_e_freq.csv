@@ -1,4 +1,4 @@
-aluno_id,nota,frequencia,passou
+id,nota,freq,passou
 1,7.5,56,0
 2,8.2,70,0
 3,4.6,61,0
