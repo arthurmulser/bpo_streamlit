@@ -44,7 +44,11 @@ class Perceptron:
                 self.bias += update
                 errors += int(update != 0.0)
             errors_per_epoch.append(errors)
-            print(f"epoca {epoch}: {errors} erros")
+            print(
+                f"epoca {epoch}: {errors} erros"
+                f" | pesos: {np.round(self.weights, 4)}"
+                f" | bias: {self.bias:.4f}"
+            )
             # guarda os melhores parametros vistos ate agora;
             if errors < self.best_errors:
                 self.best_errors = errors
