@@ -23,7 +23,7 @@ class MlpEspiralProfundidade:
         sizes = [2] + list(hidden_sizes) + [1]
         self.sizes = sizes
         rng = np.random.default_rng(seed)
-        # pesos e bias de cada camada com inicializacao Xavier;
+        # pesos e bias de cada camada com inicializacao xavier;
         self.weights = []
         self.biases = []
         for i in range(len(sizes) - 1):
@@ -65,7 +65,7 @@ class MlpEspiralProfundidade:
         return list(reversed(dw_list)), list(reversed(db_list))
 
     def fit(self, x, y, eval_data=None):
-        # treino online (SGD sequencial) como no playground: uma epoca = passar os dados amostra a amostra;
+        # treino online (sgd sequencial) como no playground: uma epoca = passar os dados amostra a amostra;
         loss_history = []
         train_acc_history, test_acc_history = [], []
         n = len(x)

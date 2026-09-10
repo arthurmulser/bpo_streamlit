@@ -24,7 +24,7 @@ class MlpXorAtivacoes:
         self.momentum = momentum
         self.n_epochs = n_epochs
         rng = np.random.default_rng(seed)
-        # inicializacao Xavier para manter a variancia dos gradientes estavel;
+        # inicializacao xavier para manter a variancia dos gradientes estavel;
         self.w1 = rng.normal(0, np.sqrt(2 / (2 + n_hidden)), (2, n_hidden))
         self.b1 = np.zeros(n_hidden)
         self.w2 = rng.normal(0, np.sqrt(2 / (n_hidden + 1)), (n_hidden, 1))
@@ -90,7 +90,7 @@ def make_xor_data(n_per_class=50):
     c10 = rng.normal([1, 0], noise, (n_per_class, 2))
     c11 = rng.normal([1, 1], noise, (n_per_class, 2))
     x = np.vstack([c00, c01, c10, c11])
-    # XOR: 0,0->0 | 0,1->1 | 1,0->1 | 1,1->0;
+    # xor: 0,0->0 | 0,1->1 | 1,0->1 | 1,1->0;
     y = np.array([0] * n_per_class + [1] * n_per_class + [1] * n_per_class + [0] * n_per_class)
     return x, y
 

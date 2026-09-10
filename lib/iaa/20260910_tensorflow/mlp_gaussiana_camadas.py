@@ -24,7 +24,7 @@ class MlpGaussianaCamadas:
         sizes = [2] + list(hidden_sizes) + [1]
         self.sizes = sizes
         rng = np.random.default_rng(seed)
-        # pesos e bias de cada camada com inicializacao Xavier;
+        # pesos e bias de cada camada com inicializacao xavier;
         self.weights = []
         self.biases = []
         for i in range(len(sizes) - 1):
@@ -120,7 +120,7 @@ def train_test_split(x, y, test_size=0.3, seed=kRANDOM_SEED):
 
 
 def linear_separability(x, y):
-    # acuracia de um classificador linear (Fisher) nos dados, medindo o quanto
+    # acuracia de um classificador linear (fisher) nos dados, medindo o quanto
     # as classes estao separaveis linearmente nessa representacao;
     x0, x1 = x[y == 0], x[y == 1]
     m0, m1 = x0.mean(axis=0), x1.mean(axis=0)
@@ -194,7 +194,7 @@ def part3_camadas():
     x, y = make_circles_data()
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3)
 
-    # ultima camada oculta com 2 neuronios para visualizarmos cada amostra em 2D;
+    # ultima camada oculta com 2 neuronios para visualizarmos cada amostra em 2d;
     model = MlpGaussianaCamadas(hidden_sizes=(8, 2))
     model.fit(x_train, y_train.astype(float).reshape(-1, 1))
 

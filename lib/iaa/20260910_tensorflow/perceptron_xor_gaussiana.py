@@ -50,20 +50,20 @@ class PerceptronXorGaussiana:
 def make_xor_data(n_per_class=50):
     rng = np.random.default_rng(42)
     noise = 0.02
-    # 4 clusters: (0,0), (0,1), (1,0), (1,1)
+    # 4 clusters: (0,0), (0,1), (1,0), (1,1);
     c00 = rng.normal([0, 0], noise, (n_per_class, 2))
     c01 = rng.normal([0, 1], noise, (n_per_class, 2))
     c10 = rng.normal([1, 0], noise, (n_per_class, 2))
     c11 = rng.normal([1, 1], noise, (n_per_class, 2))
     x = np.vstack([c00, c01, c10, c11])
-    # XOR: 0,0->0 | 0,1->1 | 1,0->1 | 1,1->0
+    # xor: 0,0->0 | 0,1->1 | 1,0->1 | 1,1->0;
     y = np.array([0]*n_per_class + [1]*n_per_class + [1]*n_per_class + [0]*n_per_class)
     return x, y
 
 
 def make_gaussian_data(n_per_class=100, pos_class_label=1.0):
     rng = np.random.default_rng(42)
-    # two linearly separable clusters (sem overlap)
+    # two linearly separable clusters (sem overlap);
     c0 = rng.normal([-1.5, -1.5], 0.4, (n_per_class, 2))
     c1 = rng.normal([1.5, 1.5], 0.4, (n_per_class, 2))
     x = np.vstack([c0, c1])
@@ -109,15 +109,15 @@ def run_experiment(name, x, y):
 
 
 def main():
-    # --- XOR ---
+    # --- xor ---;
     x_xor, y_xor = make_xor_data(n_per_class=50)
     model_xor, errors_xor = run_experiment("XOR (OU EXCLUSIVO)", x_xor, y_xor)
 
-    # --- Gaussiana ---
+    # --- gaussiana ---;
     x_gauss, y_gauss = make_gaussian_data(n_per_class=100)
     model_gauss, errors_gauss = run_experiment("GAUSSIANA", x_gauss, y_gauss)
 
-    # --- Plot ---
+    # --- plot ---;
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
     plot_decision_boundary(axes[0, 0], model_xor, x_xor, y_xor,

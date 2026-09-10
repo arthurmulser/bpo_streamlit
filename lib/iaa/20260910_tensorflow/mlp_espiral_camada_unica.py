@@ -23,7 +23,7 @@ class MlpEspiralCamadaUnica:
         sizes = [2] + list(hidden_sizes) + [1]
         self.sizes = sizes
         rng = np.random.default_rng(seed)
-        # pesos e bias de cada camada com inicializacao Xavier;
+        # pesos e bias de cada camada com inicializacao xavier;
         self.weights = []
         self.biases = []
         for i in range(len(sizes) - 1):
@@ -65,7 +65,7 @@ class MlpEspiralCamadaUnica:
         return list(reversed(dw_list)), list(reversed(db_list))
 
     def fit(self, x, y, eval_data=None):
-        # treino online (SGD sequencial): uma epoca = passar os dados amostra a amostra;
+        # treino online (sgd sequencial): uma epoca = passar os dados amostra a amostra;
         loss_history = []
         train_acc_history, test_acc_history = [], []
         n = len(x)
@@ -161,7 +161,7 @@ def main():
     x, y = make_spiral_data()
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3)
 
-    # apenas UMA camada oculta, com 3 e com 8 neuronios, 100 epocas (como o caso 5);
+    # apenas uma camada oculta, com 3 e com 8 neuronios, 100 epocas (como o caso 5);
     model_3, loss_3, train_acc_3, test_acc_3 = run_arquitetura(
         "1 camada oculta", (3,), x_train, x_test, y_train, y_test, n_epochs=100)
     model_8, loss_8, train_acc_8, test_acc_8 = run_arquitetura(
