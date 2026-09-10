@@ -21,6 +21,7 @@ Simulações baseadas nos experimentos do TensorFlow Playground (http://playgrou
 | **Caso 3** | `mlp_gaussiana_camadas.py` | Classificação com dados gaussianos (**30% para teste**); mostra como melhorar o aprendizado de padrões complexos (profundidade, neurônios, regularização) e o que cada camada aprende; |
 | **Caso 4** | `mlp_circulo_profundidade.py` | Dados do tipo **círculo** (disco e anel) com **30 épocas**: rede rasa (**1 camada x 2 neurônios**) não consegue desenhar a fronteira circular; rede **3 camadas x 4 neurônios** resolve com erro de teste ~1%; |
 | **Caso 5** | `mlp_espiral_profundidade.py` | Dados em **espiral** com **100 épocas**: observa-se que a rede **3 camadas x 4 neurônios** quase resolve a espiral (erro de teste ~2%); com **16 neurônios por camada** o erro cai para ~1%; sem overfitting relevante; |
+| **Caso 6** | `mlp_espiral_camada_unica.py` | Mesma espiral com **1 camada oculta** (**3 e 8 neurônios**): ambas chegam a ~98% de teste, similar ao Caso 5; a profundidade melhora o ajuste (0,54% vs ~1,1%) e a largura maior (3x16) generaliza melhor (0,83% vs ~2%); |
 
 ---
 
@@ -46,6 +47,10 @@ Simulações baseadas nos experimentos do TensorFlow Playground (http://playgrou
     - rede **3 camadas x 4 neurônios** após 100 épocas: o grande salto de aprendizado acontece nas primeiras ~10 épocas e o erro de teste termina em ~2%;
     - rede **3 camadas x 16 neurônios**: com a mesma profundidade, o erro de teste cai para ~1% (largura maior generaliza um pouco melhor);
     - não há overfitting relevante (treino e teste terminam próximos), ou seja, a espiral foi realmente modelada;
+- **Caso 6**:
+    - 1 camada x 3 neurônios: aprende a espiral quase por completo (treino ~1% / teste ~2%);
+    - 1 camada x 8 neurônios: resultado final muito parecido (treino ~1,3% / teste ~2%);
+    - **vs Caso 5**: profundidade (3x4) ajusta melhor o treino (0,54%) e 3x16 generaliza melhor (teste 0,83%), mas a diferença prática é pequena — o limite de ~2% no teste vem do ruído dos dados;
 
 ---
 
