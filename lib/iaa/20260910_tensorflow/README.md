@@ -20,6 +20,7 @@ Simulações baseadas nos experimentos do TensorFlow Playground (http://playgrou
 | **Caso 2** | `mlp_xor_ativacoes.py` | MLP com camada oculta de **6 neurônios** no problema **XOR**; compara as ativações **sigmoid**, **tanh**, **relu** e **linear**; apenas a linear não resolve, pois rede linear composta continua linear; |
 | **Caso 3** | `mlp_gaussiana_camadas.py` | Classificação com dados gaussianos (**30% para teste**); mostra como melhorar o aprendizado de padrões complexos (profundidade, neurônios, regularização) e o que cada camada aprende; |
 | **Caso 4** | `mlp_circulo_profundidade.py` | Dados do tipo **círculo** (disco e anel) com **30 épocas**: rede rasa (**1 camada x 2 neurônios**) não consegue desenhar a fronteira circular; rede **3 camadas x 4 neurônios** resolve com erro de teste ~1%; |
+| **Caso 5** | `mlp_espiral_profundidade.py` | Dados em **espiral** com **100 épocas**: observa-se que a rede **3 camadas x 4 neurônios** quase resolve a espiral (erro de teste ~2%); com **16 neurônios por camada** o erro cai para ~1%; sem overfitting relevante; |
 
 ---
 
@@ -41,6 +42,10 @@ Simulações baseadas nos experimentos do TensorFlow Playground (http://playgrou
     - rede rasa (1 camada x 2 neurônios): erro de treino ~21% e de teste ~22% após 30 épocas; não aprende a fronteira circular mesmo no treino (capacidade insuficiente);
     - rede profunda (3 camadas x 4 neurônios): reduz o erro a ~1% no treino e ~1% no teste, generalizando bem;
     - conclusão: adicionar **profundidade** e **neurônios** amplia a capacidade de aprender padrões complexos (círculo), que a rede rasa não consegue;
+- **Caso 5**:
+    - rede **3 camadas x 4 neurônios** após 100 épocas: o grande salto de aprendizado acontece nas primeiras ~10 épocas e o erro de teste termina em ~2%;
+    - rede **3 camadas x 16 neurônios**: com a mesma profundidade, o erro de teste cai para ~1% (largura maior generaliza um pouco melhor);
+    - não há overfitting relevante (treino e teste terminam próximos), ou seja, a espiral foi realmente modelada;
 
 ---
 
