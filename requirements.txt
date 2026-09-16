@@ -6,6 +6,7 @@ mysql-connector-python
 pandas
 plotly
 pymysql
+pyside6
 python-dotenv
 
 scikit-learn
