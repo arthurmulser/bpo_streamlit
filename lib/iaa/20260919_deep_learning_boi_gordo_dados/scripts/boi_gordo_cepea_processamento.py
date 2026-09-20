@@ -1,13 +1,12 @@
 """
-Agrega semanalmente a serie diaria do boi gordo CEPEA (a vista).
+agrega semanalmente a serie diaria do boi gordo cepea (a vista);
 
-Regras (programa de dados 20260919, secao 5):
-- grade ISO (segunda a domingo);
+regras (programa de dados 20260919, secao 5):
+- grade iso (segunda a domingo);
 - preco de fechamento = ultima observacao disponivel na semana;
 - preco medio = media das observacoes diarias da semana;
 - nenhuma informacao futura entra nos calculos da semana t;
-
-Saida: processed/boi_gordo_cepea_processed.csv
+- saida: processed/boi_gordo_cepea_processed.csv;
 """
 
 from __future__ import annotations
@@ -19,21 +18,21 @@ from pathlib import Path
 import pandas as pd
 import xlrd
 
-RAIZ_DADOS = Path(__file__).resolve().parents[1]
-ARQUIVO_RAW = RAIZ_DADOS / "raw" / "boi_gordo_cepea_raw.xls"
-PROCESSED = RAIZ_DADOS / "processed"
+kRAIZ_DADOS = Path(__file__).resolve().parents[1]
+kARQUIVO_RAW = kRAIZ_DADOS / "raw" / "boi_gordo_cepea_raw.xls"
+kPROCESSED = kRAIZ_DADOS / "processed"
 
-SAIDA = PROCESSED / "boi_gordo_cepea_processed.csv"
-METADATA = PROCESSED / "boi_gordo_cepea_metadata.csv"
+kSAIDA = kPROCESSED / "boi_gordo_cepea_processed.csv"
+kMETADATA = kPROCESSED / "boi_gordo_cepea_metadata.csv"
 
-KWARGS_OPEN = {"ignore_workbook_corruption": True}
+kKWARGS_OPEN = {"ignore_workbook_corruption": True}
 
 
 def carregar_ultima_serie_raw() -> pd.DataFrame:
-    arquivo = ARQUIVO_RAW
+    arquivo = kARQUIVO_RAW
     if not arquivo.exists():
         sys.exit("arquivo raw nao encontrado: raw/boi_gordo_cepea_raw.xls")
-    workbook = xlrd.open_workbook(str(arquivo), **KWARGS_OPEN)
+    workbook = xlrd.open_workbook(str(arquivo), **kKWARGS_OPEN)
     planilha = workbook.sheet_by_index(0)
     registros = []
     for r in range(planilha.nrows):
@@ -101,26 +100,23 @@ def registrar_metadados(arquivo: Path, df: pd.DataFrame, arquivo_fonte: Path) ->
         "data_fim": df["data_semana_fim"].max().strftime("%d/%m/%Y"),
         "status": "ok",
     }
-    metadata_path = METADATA
     bloco = pd.DataFrame([registro])
-    if metadata_path.exists():
-        historico = pd.read_csv(metadata_path)
+    if kMETADATA.exists():
+        historico = pd.read_csv(kMETADATA)
         bloco = pd.concat([historico, bloco], ignore_index=True)
-    bloco.to_csv(metadata_path, index=False)
+    bloco.to_csv(kMETADATA, index=False)
 
 
 def main() -> None:
-    PROCESSED.mkdir(parents=True, exist_ok=True)
+    kPROCESSED.mkdir(parents=True, exist_ok=True)
     diario = carregar_ultima_serie_raw()
     semanal = agregar_semanal(diario)
-    saida = SAIDA
-    semanal.to_csv(saida, index=False)
+    semanal.to_csv(kSAIDA, index=False)
 
-    arquivo_fonte = ARQUIVO_RAW
-    registrar_metadados(saida, semanal, arquivo_fonte)
+    registrar_metadados(kSAIDA, semanal, kARQUIVO_RAW)
 
-    print(f"origem:  {arquivo_fonte.name} ({len(diario)} dias)")
-    print(f"saida:   {saida}")
+    print(f"origem:  {kARQUIVO_RAW.name} ({len(diario)} dias)")
+    print(f"saida:   {kSAIDA}")
     print(f"semanas: {semanal.shape[0]}")
     print(f"inicio:  {semanal['data_semana_inicio'].min():%d/%m/%Y}")
     print(f"fim:     {semanal['data_semana_fim'].max():%d/%m/%Y}")

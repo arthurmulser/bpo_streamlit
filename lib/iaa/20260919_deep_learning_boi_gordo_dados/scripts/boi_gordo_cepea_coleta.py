@@ -1,31 +1,31 @@
 """
-Coletor da série histórica diária do indicador CEPEA/ESALQ boi gordo (à vista).
+coletor da série histórica diária do indicador cepea/esalq boi gordo (à vista);
 
-Fonte: CEPEA/ESALQ - https://cepea.org.br/br/indicador/boi-gordo.aspx
-Licença da fonte: CC BY-NC 4.0
-Série salva sem transformação em raw/boi_gordo_cepea_raw.xls e metadados em
-raw/boi_gordo_cepea_metadata.csv.
+fonte: cepea/esalq - https://cepea.org.br/br/indicador/boi-gordo.aspx;
+licença da fonte: cc by-nc 4.0;
+série salva sem transformação em raw/boi_gordo_cepea_raw.xls e metadados em
+raw/boi_gordo_cepea_metadata.csv;
 """
 
 from __future__ import annotations
 
 import argparse
 from datetime import date, datetime
+from pathlib import Path
 
 import pandas as pd
 import requests
 import xlrd
-from pathlib import Path
 
-RAIZ_DADOS = Path(__file__).resolve().parents[1]
-RAW_DIR = RAIZ_DADOS / "raw"
+kRAIZ_DADOS = Path(__file__).resolve().parents[1]
+kRAW_DIR = kRAIZ_DADOS / "raw"
 
-ARQUIVO_RAW = RAW_DIR / "boi_gordo_cepea_raw.xls"
-METADATA = RAW_DIR / "boi_gordo_cepea_metadata.csv"
+kARQUIVO_RAW = kRAW_DIR / "boi_gordo_cepea_raw.xls"
+kMETADATA = kRAW_DIR / "boi_gordo_cepea_metadata.csv"
 
-URL_SERIE = "https://cepea.org.br/br/indicador/series/boi-gordo.aspx?id=2"
+kURL_SERIE = "https://cepea.org.br/br/indicador/series/boi-gordo.aspx?id=2"
 
-HEADERS = {
+kHEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
@@ -33,19 +33,19 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 }
 
-KWARGS_OPEN = {"ignore_workbook_corruption": True}
+kKWARGS_OPEN = {"ignore_workbook_corruption": True}
 
 
-def baixar_xls(destino: Path, url: str = URL_SERIE, timeout: int = 120) -> None:
-    resposta = requests.get(url, headers=HEADERS, timeout=timeout)
+def baixar_xls(destino: Path, url: str = kURL_SERIE, timeout: int = 120) -> None:
+    resposta = requests.get(url, headers=kHEADERS, timeout=timeout)
     resposta.raise_for_status()
     destino.write_bytes(resposta.content)
 
 
 def ler_serie(caminho: Path) -> pd.DataFrame:
-    workbook = xlrd.open_workbook(str(caminho), **KWARGS_OPEN)
+    workbook = xlrd.open_workbook(str(caminho), **kKWARGS_OPEN)
     planilha = workbook.sheet_by_index(0)
-    linhas: list[tuple[str, str, str]] = []
+    linhas: list[tuple[str, str]] = []
     for r in range(planilha.nrows):
         if planilha.cell_value(r, 0) == "Data":
             data_header = r
@@ -67,11 +67,7 @@ def ler_serie(caminho: Path) -> pd.DataFrame:
     return df
 
 
-def registrar_metadados(
-    arquivo: Path,
-    df: pd.DataFrame,
-    primeira_coluna: str,
-) -> None:
+def registrar_metadados(arquivo: Path, df: pd.DataFrame, primeira_coluna: str) -> None:
     registro = {
         "arquivo": arquivo.name,
         "data_download": date.today().isoformat(),
@@ -79,44 +75,42 @@ def registrar_metadados(
         "serie": "Indicador do Boi Gordo CEPEA/ESALQ",
         "coluna": primeira_coluna,
         "licenca": "CC BY-NC 4.0",
-        "url": URL_SERIE,
+        "url": kURL_SERIE,
         "linhas": int(df.shape[0]),
         "data_inicio": df["data"].min().strftime("%d/%m/%Y"),
         "data_fim": df["data"].max().strftime("%d/%m/%Y"),
         "status": "ok",
         "registrado_em": datetime.now().isoformat(timespec="seconds"),
     }
-    metadata_path = METADATA
     bloco = pd.DataFrame([registro])
-    if metadata_path.exists():
-        historico = pd.read_csv(metadata_path)
+    if kMETADATA.exists():
+        historico = pd.read_csv(kMETADATA)
         bloco = pd.concat([historico, bloco], ignore_index=True)
-    bloco.to_csv(metadata_path, index=False)
+    bloco.to_csv(kMETADATA, index=False)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Baixa serie do boi gordo CEPEA a vista")
+    parser = argparse.ArgumentParser(description="baixa serie do boi gordo cepea a vista")
     parser.add_argument("--force", action="store_true", help="rebaixa mesmo se o arquivo existir")
     args = parser.parse_args()
 
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
-    arquivo = ARQUIVO_RAW
+    kRAW_DIR.mkdir(parents=True, exist_ok=True)
 
-    if arquivo.exists() and not args.force:
-        print(f"ja existe: {arquivo.name} (use --force para rebaixar)")
-        df = ler_serie(arquivo)
+    if kARQUIVO_RAW.exists() and not args.force:
+        print(f"ja existe: {kARQUIVO_RAW.name} (use --force para rebaixar)")
+        df = ler_serie(kARQUIVO_RAW)
     else:
-        baixar_xls(arquivo)
-        df = ler_serie(arquivo)
+        baixar_xls(kARQUIVO_RAW)
+        df = ler_serie(kARQUIVO_RAW)
 
     primeira_coluna = "preco_real"
-    print(f"arquivo: {arquivo.name}")
+    print(f"arquivo: {kARQUIVO_RAW.name}")
     print(f"linhas: {df.shape[0]}")
     print(f"inicio: {df['data'].min():%d/%m/%Y}")
     print(f"fim:    {df['data'].max():%d/%m/%Y}")
 
-    registrar_metadados(arquivo, df, primeira_coluna)
-    print(f"metadados: {METADATA}")
+    registrar_metadados(kARQUIVO_RAW, df, primeira_coluna)
+    print(f"metadados: {kMETADATA}")
 
 
 if __name__ == "__main__":
