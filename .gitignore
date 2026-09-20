@@ -1,10 +1,9 @@
-_csv/
-__pycache__/
-
 .env
-
-debug.log
-venv/
 /doc/
-
+__pycache__/
+_csv/
+debug.log
+lib/iaa/20260919_deep_learning_boi_gordo_dados/processed/
+lib/iaa/20260919_deep_learning_boi_gordo_dados/raw/
 lib/iaa/solutions/
+venv/
