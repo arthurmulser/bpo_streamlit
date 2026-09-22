@@ -11,6 +11,8 @@ from lars_new_20260227 import lars_new_20260227
 
 load_dotenv()
 
+st.set_page_config(page_icon="_img/page_icon.png")
+
 st.markdown(
     """
     <style>
