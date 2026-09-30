@@ -19,7 +19,13 @@ from pathlib import Path
 kRAIZ_DADOS = Path(__file__).resolve().parent
 kSCRIPTS = kRAIZ_DADOS / "scripts"
 
-kFONTES = ["abate_bovinos_sif", "boi_gordo_cepea", "milho_cepea"]
+kFONTES = [
+    "abate_bovinos_sif",
+    "boi_gordo_cepea",
+    "dolar_bcb_sgs",
+    "gado_eua_nass",
+    "milho_cepea",
+]
 
 kETAPAS_PADRAO = ["coleta", "processamento"]
 
