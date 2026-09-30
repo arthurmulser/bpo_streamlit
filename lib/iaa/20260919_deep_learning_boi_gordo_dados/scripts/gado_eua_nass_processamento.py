@@ -32,11 +32,24 @@ kPROCESSED = kRAIZ_DADOS / "processed"
 kSAIDA = kPROCESSED / "gado_eua_nass_processed.csv"
 kMETADATA = kPROCESSED / "gado_eua_nass_metadata.csv"
 
-kCOLUNA_VALOR = "value"
+kCOLUNA_VALOR = "Value"
 kCOLUNA_ITEM = "short_desc"
+kCOLUNA_ANO = "year"
+kCOLUNA_MES = "begin_code"
 kMESES_ATRASO_DIVULGACAO = 1
 kTOLERANCIA_LACUNAS = 2
 kCASAS_MOEDA = 2
+
+kITEM_PREFERIDO = "CATTLE, GE 500 LBS - PRICE RECEIVED, MEASURED IN $ / CWT"
+
+kITENS_EXCLUIDOS = [
+    "PARITY",
+    "10 YEAR AVG",
+    "ADJUSTED BASE",
+    "PCT OF PARITY",
+    "INDEX",
+    "PRICE PAID",
+]
 
 
 def carregar_preco_mensal() -> tuple[pd.Series, str]:
@@ -44,8 +57,10 @@ def carregar_preco_mensal() -> tuple[pd.Series, str]:
         sys.exit("arquivo raw nao encontrado: raw/gado_eua_nass_raw.csv")
 
     df = pd.read_csv(kARQUIVO_RAW, dtype=str)
-    if kCOLUNA_ITEM not in df.columns or kCOLUNA_VALOR not in df.columns:
-        sys.exit(f"colunas esperadas ausentes no raw: {kCOLUNA_ITEM}, {kCOLUNA_VALOR}")
+    esperadas = [kCOLUNA_ITEM, kCOLUNA_VALOR, kCOLUNA_ANO, kCOLUNA_MES]
+    ausentes = [c for c in esperadas if c not in df.columns]
+    if ausentes:
+        sys.exit(f"colunas esperadas ausentes no raw: {', '.join(ausentes)}")
 
     df[kCOLUNA_VALOR] = pd.to_numeric(
         df[kCOLUNA_VALOR].astype(str).str.replace(",", "", regex=False), errors="coerce"
@@ -55,12 +70,17 @@ def carregar_preco_mensal() -> tuple[pd.Series, str]:
         sys.exit("nenhum valor numerico no raw de gado dos eua")
 
     df["mes"] = pd.PeriodIndex(
-        year=df["year"].astype(int).astype(str)
+        df[kCOLUNA_ANO].astype(int).astype(str)
         + "-"
-        + df["month"].astype(int).astype(str).str.zfill(2),
+        + df[kCOLUNA_MES].astype(int).astype(str).str.zfill(2),
         freq="M",
     )
     df[kCOLUNA_ITEM] = df[kCOLUNA_ITEM].fillna("(sem item)")
+
+    derivados = df[kCOLUNA_ITEM].str.contains("|".join(kITENS_EXCLUIDOS), case=False)
+    if derivados.all():
+        sys.exit("todos os itens do raw sao series derivadas, nao ha preco recebido")
+    df = df[~derivados]
 
     escolhidos: list[tuple[str, pd.Series]] = []
     for item, bloco in df.groupby(kCOLUNA_ITEM):
@@ -77,9 +97,15 @@ def carregar_preco_mensal() -> tuple[pd.Series, str]:
         maior = max(partes, key=len)
         return mensal.loc[maior]
 
-    melhor_item, melhor_serie = max(
-        escolhidos, key=lambda par: (len(trecho_contiguo(par[1])), par[1].notna().sum())
-    )
+    def preferencia(par: tuple[str, pd.Series]) -> tuple[int, int, int]:
+        item, mensal = par
+        return (
+            int(item == kITEM_PREFERIDO),
+            len(trecho_contiguo(mensal)),
+            int(mensal.notna().sum()),
+        )
+
+    melhor_item, melhor_serie = max(escolhidos, key=preferencia)
     return trecho_contiguo(melhor_serie), melhor_item
 
 

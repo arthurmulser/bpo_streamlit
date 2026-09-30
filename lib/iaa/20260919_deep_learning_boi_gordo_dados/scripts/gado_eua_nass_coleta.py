@@ -28,29 +28,27 @@ kARQUIVO_RAW = kRAW_DIR / "gado_eua_nass_raw.csv"
 kMETADATA = kRAW_DIR / "gado_eua_nass_metadata.csv"
 
 kURL_SERIE = "https://quickstats.nass.usda.gov/api/api_GET/"
-kURL_CADASTRO = "https://apps.ams.usda.gov/opendata"
+kURL_CONTAGEM = "https://quickstats.nass.usda.gov/api/get_counts"
+kURL_CADASTRO = "https://quickstats.nass.usda.gov/api"
 kVARIAVEL_CHAVE = "QUICKSTATS_API_KEY"
 
 kPARAMETROS = {
-    "commodity_desc": "Cattle",
-    "statistic_desc": "Price Received",
-    "unit_desc": "Dollars per cwt",
-    "frequency_desc": "Monthly",
-    "state_name": "NATIONAL",
-    "format": "JSON",
+    "commodity_desc": "CATTLE",
+    "statisticcat_desc": "PRICE RECEIVED",
+    "unit_desc": "$ / CWT",
+    "freq_desc": "MONTHLY",
+    "state_name": "US TOTAL",
 }
 
 kCAMPOS_DOMINIO = [
-    "commodity_desc",
     "short_desc",
     "class_desc",
-    "quality_desc",
     "unit_desc",
-    "statistic_desc",
+    "statisticcat_desc",
+    "freq_desc",
     "domain_desc",
-    "frequency_desc",
     "state_name",
-    "domain_category_desc",
+    "reference_period_desc",
 ]
 
 kANO_INICIO = 1997
@@ -82,31 +80,66 @@ def obter_chave() -> str:
 def consultar(
     chave: str, ano: int, timeout: int = kTIMEOUT, amplitude: bool = False
 ) -> list[dict]:
-    parametros = {"key": chave, "year": str(ano), "row_count": str(kROW_COUNT)}
+    parametros = {
+        "key": chave,
+        "year": str(ano),
+        "row_count": str(kROW_COUNT),
+        "format": "JSON",
+        "commodity_desc": kPARAMETROS["commodity_desc"],
+    }
     if not amplitude:
         parametros.update(kPARAMETROS)
-    for tentativa in range(1, kTENTAVAS + 1):
-        resposta = requests.get(
-            kURL_SERIE, params=parametros, headers=kHEADERS, timeout=timeout
-        )
+    for tentativa in range(1, kTENTATIVAS + 1):
+        try:
+            resposta = requests.get(
+                kURL_SERIE, params=parametros, headers=kHEADERS, timeout=timeout
+            )
+        except requests.RequestException as erro:
+            print(f"  {ano}: tentativa {tentativa} falhou ({type(erro).__name__})")
+            time.sleep(2 * tentativa)
+            continue
         if resposta.status_code == 401:
             sys.exit(
                 "chave de api recusada pelo quickstats (401): "
                 f"confira {kVARIAVEL_CHAVE} no .env"
             )
-        resposta.raise_for_status()
+        try:
+            resposta.raise_for_status()
+        except requests.HTTPError as erro:
+            print(f"  {ano}: tentativa {tentativa} falhou (http {erro.response.status_code})")
+            time.sleep(2 * tentativa)
+            continue
         try:
             corpo = resposta.json()
         except ValueError:
+            print(f"  {ano}: tentativa {tentativa} devolveu corpo invalido")
             corpo = {}
         if "error" in corpo or "message" in corpo:
             sys.exit(f"quickstats recusou a consulta: {resposta.text[:300]}")
         dados = corpo.get("data") or []
-        if not dados and tentativa < kTENTAVAS:
+        if not dados and tentativa < kTENTATIVAS:
             time.sleep(2 * tentativa)
             continue
         return dados
     return []
+
+
+def consultar_contagem(chave: str, ano: int, timeout: int = kTIMEOUT) -> int | str:
+    """
+    a contagem sai antes da serie: o quickstats recusa com http 413 quando a
+    resposta Passaria do limite de 50.000 registros;
+    """
+    try:
+        resposta = requests.get(
+            kURL_CONTAGEM,
+            params={"key": chave, "year": str(ano), "commodity_desc": kPARAMETROS["commodity_desc"]},
+            headers=kHEADERS,
+            timeout=timeout,
+        )
+        resposta.raise_for_status()
+        return int(resposta.json()["count"])
+    except (requests.RequestException, ValueError, KeyError, TypeError) as erro:
+        return f"indisponivel ({type(erro).__name__})"
 
 
 def baixar_serie(chave: str, anos: range) -> pd.DataFrame:
@@ -125,13 +158,17 @@ def baixar_serie(chave: str, anos: range) -> pd.DataFrame:
 
 
 def relatar_dominio(chave: str) -> None:
-    linhas = consultar(chave, date.today().year - 1, amplitude=True)
+    ano = date.today().year - 1
+    contagem = consultar_contagem(chave, ano)
+    print(f"ano de referencia: {ano}")
+    print(f"registros de gado no ano (sem filtro de preco): {contagem}")
+    linhas = consultar(chave, ano, amplitude=True)
     if not linhas:
         print("quickstats nao devolveu nenhum registro de gado para o ano consultado")
         return
     df = pd.DataFrame(linhas)
     disponiveis = [c for c in kCAMPOS_DOMINIO if c in df.columns]
-    print("valores disponiveis no quickstats para bovinos (ano de referencia):")
+    print("valores disponiveis no quickstats para bovinos:")
     for coluna in disponiveis:
         valores = sorted(v for v in df[coluna].dropna().unique() if str(v).strip())
         amostra = ", ".join(valores[:25])
@@ -144,13 +181,23 @@ def ler_arquivo(caminho: Path) -> pd.DataFrame:
     return pd.read_csv(caminho, dtype=str)
 
 
+def extrair_mes(df: pd.DataFrame) -> pd.Series:
+    """
+    o quickstats nao manda o mes em um campo `month`: ele vem em `begin_code`
+    (01 a 12) e em `reference_period_desc` (JAN a DEZ);
+    """
+    ano = df["year"].astype(int).astype(str)
+    mes = df["begin_code"].astype(int).astype(str).str.zfill(2)
+    return pd.PeriodIndex(ano + "-" + mes, freq="M")
+
+
 def registrar_metadados(arquivo: Path, df: pd.DataFrame, primeira_coluna: str) -> None:
-    datas = pd.to_datetime(df["year"].astype(int).astype(str) + "-" + df["month"].astype(int).astype(str).str.zfill(2) + "-01")
+    datas = extrair_mes(df).to_timestamp()
     registro = {
         "arquivo": arquivo.name,
         "data_download": date.today().isoformat(),
         "fonte": "USDA NASS - QuickStats",
-        "serie": "Cattle - Price Received - national - monthly - dollars per cwt",
+        "serie": "Cattle - Price Received - US TOTAL - monthly - $ / CWT",
         "coluna": primeira_coluna,
         "licenca": "dominio publico (usda nass)",
         "url": kURL_SERIE,
@@ -199,9 +246,7 @@ def main() -> None:
         df.to_csv(kARQUIVO_RAW, index=False)
 
     primeira_coluna = "year"
-    datas = pd.to_datetime(
-        df["year"].astype(int).astype(str) + "-" + df["month"].astype(int).astype(str).str.zfill(2) + "-01"
-    )
+    datas = extrair_mes(df).to_timestamp()
     print(f"arquivo: {kARQUIVO_RAW.name}")
     print(f"linhas: {df.shape[0]}")
     print(f"itens:  {df['short_desc'].nunique() if 'short_desc' in df.columns else '-'}")

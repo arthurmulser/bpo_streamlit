@@ -13,6 +13,7 @@ a coleta e feita ano a ano;
 from __future__ import annotations
 
 import argparse
+import sys
 import time
 from datetime import date, datetime
 from pathlib import Path
@@ -29,8 +30,11 @@ kMETADATA = kRAW_DIR / "dolar_bcb_sgs_metadata.csv"
 kURL_SERIE = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados"
 kSERIE_SGS = 1
 kANO_INICIO = 1997
-kPAUSA_SEGUNDOS = 0.4
+kPAUSA_SEGUNDOS = 1.0
 kTIMEOUT = 60
+kTENTATIVAS = 4
+kESPERA_INICIAL_SEGUNDOS = 2
+kMINIMO_OBS_POR_ANO = 200
 
 kHEADERS = {
     "User-Agent": (
@@ -50,27 +54,70 @@ def montar_url(ano: int) -> str:
 
 
 def baixar_ano(ano: int, timeout: int = kTIMEOUT) -> list[dict]:
-    resposta = requests.get(montar_url(ano), headers=kHEADERS, timeout=timeout)
-    resposta.raise_for_status()
-    try:
-        return resposta.json()
-    except ValueError:
-        return []
+    """
+    consulta um ano com repeticao: o bcb devolve 502 e resposta vazia de forma
+    intermitente, e um ano vazio aceito em silencio vira lacuna na serie;
+    """
+    for tentativa in range(1, kTENTATIVAS + 1):
+        try:
+            resposta = requests.get(montar_url(ano), headers=kHEADERS, timeout=timeout)
+            resposta.raise_for_status()
+            linhas = resposta.json()
+        except (requests.RequestException, ValueError) as erro:
+            print(f"  {ano}: tentativa {tentativa} falhou ({type(erro).__name__})")
+            linhas = []
+        else:
+            if linhas:
+                return linhas
+            print(f"  {ano}: tentativa {tentativa} devolveu resposta vazia")
+        if tentativa < kTENTATIVAS:
+            time.sleep(kESPERA_INICIAL_SEGUNDOS * tentativa)
+    sys.exit(
+        f"ano {ano} nao pode ser baixado apos {kTENTATIVAS} tentativas; "
+        "a api do bcb esta instavel, rode novamente"
+    )
 
 
 def baixar_serie(anos: range, timeout: int = kTIMEOUT) -> pd.DataFrame:
     registros: list[dict] = []
+    anos_vazios: list[int] = []
     for ano in anos:
         linhas = baixar_ano(ano, timeout=timeout)
         print(f"  {ano}: {len(linhas)} registros")
+        if not linhas:
+            anos_vazios.append(ano)
         registros.extend(linhas)
         if ano != anos[-1]:
             time.sleep(kPAUSA_SEGUNDOS)
+    if anos_vazios:
+        sys.exit(f"anos sem registro: {anos_vazios}; nada foi gravado")
     return pd.DataFrame(registros, columns=["data", "valor"])
 
 
 def ler_arquivo(caminho: Path) -> pd.DataFrame:
     return pd.read_csv(caminho, dtype=str)
+
+
+def validar_cobertura(df: pd.DataFrame) -> None:
+    """
+    um ano fechado de cotacao diaria tem cerca de 250 observacoes uteis; ano com
+    menos disso indica resposta truncada do bcb e nao deve chegar ao raw;
+    """
+    ano_atual = date.today().year
+    datas = pd.to_datetime(df["data"], format="%d/%m/%Y", errors="coerce")
+    if datas.isna().any():
+        sys.exit("data invalida no raw do dolar")
+    contagem = datas.dt.year.value_counts()
+    esperados = range(kANO_INICIO, ano_atual + 1)
+    faltando = [ano for ano in esperados if ano not in contagem.index]
+    if faltando:
+        sys.exit(f"anos ausentes no raw do dolar: {faltando}")
+    minimo = 1 if ano_atual == max(esperados) else kMINIMO_OBS_POR_ANO
+    suspensos = {
+        ano: int(contagem[ano]) for ano in esperados if contagem[ano] < minimo
+    }
+    if suspensos:
+        sys.exit(f"anos com cobertura insuficiente: {suspensos}; nada foi gravado")
 
 
 def registrar_metadados(arquivo: Path, df: pd.DataFrame, primeira_coluna: str) -> None:
@@ -109,6 +156,7 @@ def main() -> None:
     else:
         print(f"baixando serie {kSERIE_SGS} de {kANO_INICIO} ate {date.today().year}")
         df = baixar_serie(range(kANO_INICIO, date.today().year + 1))
+        validar_cobertura(df)
         df.to_csv(kARQUIVO_RAW, index=False)
 
     primeira_coluna = "data"
